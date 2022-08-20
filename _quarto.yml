@@ -9,18 +9,22 @@ book:
   chapters:
     - index.qmd
     - 01_goal.qmd
+  search: true
+  repo-url: https://github.com/fazepher/Tempering_Report
+  downloads: [pdf]
 
+execute:
+  cache: true
+  
 format:
   html:
     theme: cosmo
+    echo: false
   pdf:
     documentclass: scrreprt
     fontsize: "12pt"
-    linestretch: "1.5"
-    margin-bottom: "1.15in"
-    margin-left: "1.25in"
-    margin-right: "1.25in"
-    margin-top: "1.15in"
+    echo: false
+
 
 
 

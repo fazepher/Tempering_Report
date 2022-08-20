@@ -1,7 +1,6 @@
 # The Goal
 
 ```{r}
-#| echo: false
 #| warning: false
 #| message: false
 
@@ -9,79 +8,91 @@ library(tidyverse)
 library(patchwork)
 library(future)
 library(furrr)
+library(fazhthemes)
 set.seed(580207)
+
+theme_set(theme_classic())
+azul <- "steelblue4"
+naranja <- "chocolate2"
+aqua <- "darkcyan" 
+morado <- "blueviolet"
+gris <- "gray65"
+colores_ord <- c(gris, aqua, azul, morado, naranja)
 
 ```
 
-A common statistical goal is to estimate an expectated value of a function $h$ of a random variable $X \in \mathcal{X}\subset\mathbb{R}^d$: 
+A common statistical goal is to estimate an expected value of a function $h$ of a random variable $X \in \mathcal{X}\subset\mathbb{R}^d$: 
 $$\mathbb{E}_X[h(X)] = \int\limits_{\mathcal{X}} h(x) d\pi_X.$$
-Despite the simple expression above, these integrals are generally intractable so that one cannot compute them analytically. Furthermore, the dimension $d$ is sufficiently high, as to also render numerical integration infeasable. 
+Despite the aparent simple expression above, these integrals are generally intractable so that one cannot compute them analytically. Furthermore, the dimension $d$ is sufficiently high, as to also render numerical integration infeasable. 
 
-One would like then to resort to a *Law of Large numbers* via Monte Carlo methods. That is, if one is able to simulate in a computer a random sample $\lbrace X_s\rbrace_{s=1}^S \overset{iid}{\sim} \pi_X$, then a reasonable estimator of the target expectation is the sample average since the latter converges to the former as $S$ grows: 
+Instead, one would like to resort to a *Law of Large numbers* via Monte Carlo methods. That is, if one is able to simulate in a computer $\lbrace X_s\rbrace_{s=1}^S \overset{iid}{\sim} \pi_X$, then a reasonable estimator of the target expectation is the sample average since the latter converges to the former as the sample size $S$ grows: 
 $$\hat{h}_S := \dfrac{1}{S}\sum\limits_{s=1}^S h(X_s) \underset{S\to\infty}{\longrightarrow} \mathbb{E}_X[h(X)].$$
+This is promising, but one rapidly realizes that for a given $\pi$ of interest it may also be hard to obtain *independent* samples from it.
 
-This is promising, but beyond some simpler situations, it is also hard to obtain *independent* samples from the distribution $\pi$. Fortunately, it may be easier to generate *dependent* samples and still use the sample average as an estimator. The idea is that one can construct a *Markov Chain* whose invariant distribution is $\pi$ and for which an *Ergodic Theorem* applies to justify our estimation procedure. Indeed, a Markov Chain Monte Carlo estimator, or **MCMC** estimator for short, is constructed by simulating a realization of a Markov Chain $\lbrace X_s\rbrace_{s=1}^S$ such that the following is true:
+Fortunately, it may be easier to generate *dependent* samples and still use the sample average as an estimator. The idea is that one can construct a *Markov Chain* whose limiting invariant distribution is $\pi$ and for which an *Ergodic Theorem* applies to justify our estimation procedure. Indeed, a Markov Chain Monte Carlo estimator, or **MCMC** estimator for short, is constructed by simulating a realization of a Markov Chain $\lbrace X_s\rbrace_{s=1}^S$ such that the following is true:
 $$\begin{split}
 &X_s \overset{\mathcal{D}}{\underset{s\to\infty}{\longrightarrow}} \pi_X \\
 &X_s \sim \pi \Longrightarrow X_{s+1} \sim \pi_X \\
 &\hat{h}_S \underset{S\to\infty}{\longrightarrow} \mathbb{E}_X[h(X)]
 \end{split}$$
 
-For illustration purposes, let us estimate the mean of a univariate standard normal by constructing the most basic type of MCMC chain: **Random Walk Metropolis**. The *traceplot* in the top-left panel of @fig-rwm-normal shows the evolution of the chain where the horizontal axis represents the sample number and the vertical axis the $x$ state of the chain; we see a rapidly oscilating 'catterpillar' pattern around the bulk of the distribution centered at the true mean value of $0$ signaled by the orange horizontal reference line. On the top-right panel we see the *histogram* approximation of the chain sample (blue) to the true density (orange); while not perfect, we can see a decent match. Most importantly to our estimation purposes, we see on the bottom panel the evolution of the **ergodic averages** otherwise known as the cummulative mean as the chain evolves; indeed there is convergence to the true mean.  
+As an illustration, let us estimate the mean of a univariate standard normal via one of the basic MCMC algorithms: **Random Walk Metropolis**. The *traceplot* in the top-left panel of @fig-rwm-normal shows the evolution of the chain where the horizontal axis represents the sample number and the vertical axis the $x$ state of the chain; we see an oscilating 'caterpillar' pattern around the bulk of the distribution and centered at the true mean value of $0$, signaled by the orange horizontal reference line. On the top-right panel we see the chain's *histogram* approximation (blue) to the true density (orange); while not perfect, we can see a decent match. Most importantly to our estimation purposes, we see on the bottom panel the evolution of the **ergodic averages** or cummulative means; indeed there is convergence to the true mean as the chain evolves.
 
-```{r rwm_normal}
-#| echo: false
-#| cache: true
+```{r rwm_normal_chain}
+
+rwm_normal <- tempeRing:::rwm_sampler_chain(tempeRing:::lnorm, scale = 5.25, 
+                                            S = 6000, burn = 1000, silent = TRUE)
+```
+
+
+```{r rwm_normal_fig}
 #| label: fig-rwm-normal
 #| fig-cap: Random Walk Metropolis estimation of a univariate standard normal density.
 
-rwm_normal <- tempeRing:::rwm_sampler_chain(tempeRing:::lnorm, scale = 5, 
-                                            S = 3000, burn = 1000, silent = TRUE)
-
 rwm_normal_x <- tibble(x = rwm_normal$x, s = seq_along(x), mean = cummean(x)) 
 
-rwm_normal_lims <- max(abs(rwm_normal_x$x)) + 0.5
+rwm_normal_lims <- max(abs(rwm_normal_x$x)) + 1
 rwm_normal_x_trace <- rwm_normal_x |> 
   ggplot(aes(x=s,y=x)) + 
-  geom_hline(yintercept = 0, color = "chocolate2") + 
-  geom_path(color = "steelblue4") + 
+  geom_hline(yintercept = 0, color = naranja) + 
+  geom_path(color = azul, size = rel(0.25)) + 
   labs(title = "Traceplot") + 
-  ylim(-rwm_normal_lims, rwm_normal_lims) + 
-  theme_classic()
+  ylim(-rwm_normal_lims, rwm_normal_lims) 
 rwm_normal_x_hist <- rwm_normal_x |> 
   ggplot(aes(x=x)) + 
   geom_histogram(aes(y=after_stat(density)), bins = 30, 
-                 color = "steelblue4", fill = "transparent") +
-  stat_function(fun = dnorm, color = "chocolate2", n = 1001) + 
+                 color = azul, fill = "transparent") +
+  stat_function(fun = dnorm, color = naranja, n = 1001) + 
   labs(title = "Sample Histogram") + 
-  xlim(-rwm_normal_lims, rwm_normal_lims) + 
-  theme_classic()
+  xlim(-rwm_normal_lims, rwm_normal_lims) 
 rwm_normal_ergo_lims <- max(abs(rwm_normal_x$mean)) + 0.05
 rwm_normal_x_ergo <- rwm_normal_x |> 
   ggplot(aes(x=s,y=mean)) + 
-  geom_hline(yintercept = 0, color = "chocolate2") + 
-  geom_path(color = "steelblue4") + 
+  geom_hline(yintercept = 0, color = naranja) + 
+  geom_path(color = azul) + 
   labs(title = "Ergodic Averages") + 
-  ylim(-rwm_normal_ergo_lims, rwm_normal_ergo_lims) + 
-  theme_classic()
+  ylim(-rwm_normal_ergo_lims, rwm_normal_ergo_lims) 
 
 (rwm_normal_x_trace + rwm_normal_x_hist) / rwm_normal_x_ergo
 
 ```
 
 This method also works for higher dimensions. If we now take a $20$-dimensional multivariate normal with independent components, we see the same pattern of convergence of the ergodic averages to each of the marginal means (top of @fig-rwm-mvtnorm). Thinking of a more general expectation of interest, we could for example consider the probability of the first component being bigger than the second component: 
-$$\mathbb{P}_X(X_1 \geq X_2) = \mathbb{E}_X\left[\,\mathbb{I}(X_1 \geq X_2)\,\right] = 0.5,$$
+$$\text{Pr}[X_1 \geq X_2] = \mathbb{E}_X\left[\,1_{[0,\infty)}(X_1 - X_2)\,\right] = 0.5,$$
 the convergence is shown in the bottom of @fig-rwm-mvtnorm. 
 
-```{r rwm_mvtnorm}
-#| cache: true
-#| echo: false
-#| label: fig-rwm-mvtnorm
-#| fig.cap: Convergence of Random Walk Metropolis ergodic averages to the marginal means of a 20-dimensional multivariate independent normal.
+```{r rwm_mvtnorm_chain}
 
 rwm_mvtnorm <- tempeRing:::rwm_sampler_chain(tempeRing:::lmvtnorm, mu = rep(0, 20),
                                              scale = diag(0.3,20), 
-                                             S = 3000, burn = 1000, silent = TRUE)
+                                             S = 11000, burn = 1000, silent = TRUE)
+
+```
+
+```{r rwm_mvtnorm_fig}
+#| label: fig-rwm-mvtnorm
+#| fig.cap: Convergence of Random Walk Metropolis ergodic averages to the marginal means of a 20-dimensional multivariate independent normal.
+
 
 rwm_mvtnorm_x <- data.frame(rwm_mvtnorm$x) |> tibble() |> 
   mutate(s = row_number()) 
@@ -92,19 +103,18 @@ rwm_mvtnorm_ergo_comp <- rwm_mvtnorm_x |>
   group_by(Component) |> 
   mutate(mean = cummean(Value)) |>
   ggplot(aes(x=s,y=mean,group=Component)) + 
-  geom_hline(yintercept = 0, color = "chocolate2") + 
-  geom_path(color = "steelblue4") + 
-  labs(title = "Ergodic Averages of each Component") + 
-  theme_classic()
+  geom_hline(yintercept = 0, color = naranja) + 
+  geom_path(color = azul, size = rel(0.25)) + 
+  labs(title = "Ergodic Averages of each Component") 
 
 rwm_mvtnorm_ergo_dif <- rwm_mvtnorm_x |> 
   mutate(dif = X1 > X2, 
          mean = cummean(dif)) |>
   ggplot(aes(x=s,y=mean)) + 
-  geom_hline(yintercept = 0.5, color = "chocolate2") + 
-  geom_path(color = "steelblue4") + 
-  labs(title = "Ergodic Proportion of samples where X1 > X2") + 
-  theme_classic()
+  geom_hline(yintercept = 0.5, color = naranja) + 
+  geom_path(color = azul) + 
+  labs(title = "Ergodic Proportion of samples where X1 > X2") +
+  ylim(0,1)
 
 rwm_mvtnorm_ergo_comp / rwm_mvtnorm_ergo_dif
 
@@ -115,16 +125,113 @@ Of course, more complicated distributions lead to more difficult expectations an
 While these methods have been highly successful, a situation where they fail badly is whenever the distribution been targeted exhibits multimodality. For example, consider the following mixture of normals in @fig-dmix_norm.
 
 ```{r dmix_norm}
-#| cache: true
-#| echo: false
 #| label: fig-dmix_norm
 #| fig-cap: Density of a mixture of two univariate normals.
-#| out-width: 0.25\\textwidth
+#| fig-width: 4.125
+#| fig-height: 2.625
 
 ggplot() + 
-  stat_function(fun = tempeRing::dmix_norm, color = "chocolate2",
+  stat_function(fun = tempeRing::dmix_norm, color = naranja,
                 args = list(w = c(0.5,0.5), mean = c(-20,20), sd = c(3, 3)), n = 1001) + 
-  xlim(-40, 40) + 
-  theme_classic()
+  xlim(-40, 40)
 ```
 
+The localized and mode-pulling behavior of most common MCMC algorithms prevent them to traverse, in any finite amount of time, the big valley of low probability that separates the modes, effectively trapping any given chain in one of them. 
+
+```{r}
+#| cache: true
+#| echo: false
+#| label: fig-rwm-mixnorm
+#| fig-cap: Random Walk Metropolis biased estimation under a mixture target density with well separated modes. 
+
+rwm_mixnorm <- tempeRing:::rwm_sampler_chain(tempeRing:::ulmix_norm_temp, beta = 1,
+                                             w = c(0.5,0.5), mean = c(-20,20), sd = c(3, 3),
+                                             scale = 5, 
+                                             S = 3000, burn = 1000, silent = TRUE)
+
+rwm_mixnorm_x <- tibble(x = rwm_mixnorm$x, s = seq_along(x), mean = cummean(x)) 
+
+rwm_mixnorm_lims <- max(abs(rwm_mixnorm_x$x)) + 5
+rwm_mixnorm_x_trace <- rwm_mixnorm_x |> 
+  ggplot(aes(x=s,y=x)) + 
+  geom_hline(yintercept = 0, color = "chocolate2") +
+  geom_hline(yintercept = c(-20,20), color = "darkcyan") + 
+  geom_path(color = "steelblue4") + 
+  labs(title = "Traceplot") + 
+  ylim(-rwm_mixnorm_lims, rwm_mixnorm_lims) + 
+  theme_classic()
+rwm_mixnorm_x_hist <- rwm_mixnorm_x |> 
+  ggplot(aes(x=x)) + 
+  geom_histogram(aes(y=after_stat(density)), bins = 30, 
+                 color = "steelblue4", fill = "transparent") +
+  stat_function(fun = tempeRing:::dmix_norm, 
+                args = list(w = c(0.5,0.5), mean = c(-20,20), sd = c(3,3)),
+                color = "chocolate2", n = 1001) + 
+  labs(title = "Sample Histogram") + 
+  xlim(-rwm_mixnorm_lims, rwm_mixnorm_lims) + 
+  theme_classic()
+rwm_mixnorm_ergo_lims <- max(abs(rwm_mixnorm_x$mean)) + 0.05
+rwm_mixnorm_x_ergo <- rwm_mixnorm_x |> 
+  ggplot(aes(x=s,y=mean)) + 
+  geom_hline(yintercept = 0, color = "chocolate2") + 
+  geom_path(color = "steelblue4") + 
+  labs(title = "Ergodic Averages") + 
+  ylim(-rwm_mixnorm_ergo_lims, rwm_mixnorm_ergo_lims) + 
+  theme_classic()
+
+(rwm_mixnorm_x_trace + rwm_mixnorm_x_hist) / rwm_mixnorm_x_ergo
+
+```
+
+If the distributions were flatter, and there would be more bridging mass between the modes, then the same algorithm would be much better behaved and if tuned properly would have no major issues in this simple setting. For example, just letting the chains run longer for the alternative model with parameter $\beta=0.05$, yields the following:
+
+```{r}
+#| cache: true
+#| echo: false
+#| label: fig-rwm-mixnorm-temp
+#| fig-cap: Random Walk Metropolis biased estimation under a mixture target density with well separated modes. 
+
+rwm_mixnorm_temp <- tempeRing:::rwm_sampler_chain(tempeRing:::ulmix_norm_temp, beta = 0.05,
+                                                  w = c(0.5,0.5), mean = c(-20,20), sd = c(3, 3),
+                                                  scale = 5, 
+                                                  S = 10000, burn = 2500, silent = TRUE)
+
+rwm_mixnorm_temp_x <- tibble(x = rwm_mixnorm_temp$x, s = seq_along(x), mean = cummean(x)) 
+
+rwm_mixnorm_temp_lims <- max(abs(rwm_mixnorm_temp_x$x)) + 20
+rwm_mixnorm_temp_x_trace <- rwm_mixnorm_temp_x |> 
+  ggplot(aes(x=s,y=x)) + 
+  geom_hline(yintercept = 0, color = "chocolate2") + 
+  geom_hline(yintercept = c(-20,20), color = "darkcyan") + 
+  geom_path(color = "steelblue4") + 
+  labs(title = "Traceplot") + 
+  ylim(-rwm_mixnorm_temp_lims, rwm_mixnorm_temp_lims) + 
+  theme_classic()
+z_mixnormtemp <- integrate(function(x) 
+  tempeRing:::ulmix_norm_temp(x, beta = 0.05, w = c(0.5,0.5), mean = c(-20,20), sd = c(3,3)) |> exp(), 
+  lower = -Inf, upper = Inf)$value
+rwm_mixnorm_temp_x_hist <- rwm_mixnorm_temp_x |> 
+  ggplot(aes(x=x)) + 
+  geom_histogram(aes(y=after_stat(density)), bins = 30, 
+                 color = "steelblue4", fill = "transparent") +
+  stat_function(fun = function(x) 
+    exp(tempeRing:::ulmix_norm_temp(x, beta = 0.05, w = c(0.5,0.5), 
+                                    mean = c(-20,20), sd = c(3,3)))/z_mixnormtemp, 
+                color = "chocolate2", n = 1001) + 
+  labs(title = "Sample Histogram") + 
+  xlim(-rwm_mixnorm_temp_lims, rwm_mixnorm_temp_lims) + 
+  theme_classic()
+rwm_mixnorm_temp_ergo_lims <- max(abs(rwm_mixnorm_temp_x$mean)) + 0.05
+rwm_mixnorm_temp_x_ergo <- rwm_mixnorm_temp_x |> 
+  ggplot(aes(x=s,y=mean)) + 
+  geom_hline(yintercept = 0, color = "chocolate2") + 
+  geom_path(color = "steelblue4") + 
+  labs(title = "Ergodic Averages") + 
+  ylim(-rwm_mixnorm_temp_ergo_lims, rwm_mixnorm_temp_ergo_lims) + 
+  theme_classic()
+
+(rwm_mixnorm_temp_x_trace + rwm_mixnorm_temp_x_hist) / rwm_mixnorm_temp_x_ergo
+
+```
+
+Gains could be made with more careful tunning. However, what this example illustrates is that flatter densities are easier to explore for MCMC methods and help them escape local mode traps. This property leads to the Simulated Tempering algorithm. 

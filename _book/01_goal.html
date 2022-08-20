@@ -78,6 +78,10 @@ ul.task-list{list-style: none;}
     <div class="pt-lg-2 mt-2 text-left sidebar-header">
     <div class="sidebar-title mb-0 py-0">
       <a href="./">Non-reversible Tempering for multimodal densities</a> 
+        <div class="sidebar-tools-main">
+    <a href="https://github.com/fazepher/Tempering_Report" title="Source Code" class="sidebar-tool px-1"><i class="bi bi-github"></i></a>
+    <a href="./Non-reversible-Tempering-for-multimodal-densities.pdf" title="Download PDF" class="sidebar-tool px-1"><i class="bi bi-file-pdf"></i></a>
+</div>
     </div>
       </div>
       <div class="mt-2 flex-shrink-0 align-items-center">
@@ -125,22 +129,26 @@ ul.task-list{list-style: none;}
 
 </header>
 
-<div class="cell">
+<div class="cell" data-hash="01_goal_cache/html/unnamed-chunk-1_a0484775bec7adaee2018984462fe8d5">
 
 </div>
-<p>A common statistical goal is to estimate an expectated value of a function <span class="math inline">\(h\)</span> of a random variable <span class="math inline">\(X \in \mathcal{X}\subset\mathbb{R}^d\)</span>:</p>
+<p>A common statistical goal is to estimate an expected value of a function <span class="math inline">\(h\)</span> of a random variable <span class="math inline">\(X \in \mathcal{X}\subset\mathbb{R}^d\)</span>:</p>
 <p><span class="math display">\[\mathbb{E}_X[h(X)] = \int\limits_{\mathcal{X}} h(x) d\pi_X.\]</span></p>
-<p>Despite the simple expression above, these integrals are generally intractable so that one cannot compute them analytically. Furthermore, the dimension <span class="math inline">\(d\)</span> is sufficiently high, as to also render numerical integration infeasable.</p>
-<p>One would like then to resort to a <em>Law of Large numbers</em> via Monte Carlo methods. That is, if one is able to simulate in a computer a random sample <span class="math inline">\(\lbrace X_s\rbrace_{s=1}^S \overset{iid}{\sim} \pi_X\)</span>, then a reasonable estimator of the target expectation is the sample average since the latter converges to the former as <span class="math inline">\(S\)</span> grows:</p>
+<p>Despite the aparent simple expression above, these integrals are generally intractable so that one cannot compute them analytically. Furthermore, the dimension <span class="math inline">\(d\)</span> is sufficiently high, as to also render numerical integration infeasable.</p>
+<p>Instead, one would like to resort to a <em>Law of Large numbers</em> via Monte Carlo methods. That is, if one is able to simulate in a computer <span class="math inline">\(\lbrace X_s\rbrace_{s=1}^S \overset{iid}{\sim} \pi_X\)</span>, then a reasonable estimator of the target expectation is the sample average since the latter converges to the former as the sample size <span class="math inline">\(S\)</span> grows:</p>
 <p><span class="math display">\[\hat{h}_S := \dfrac{1}{S}\sum\limits_{s=1}^S h(X_s) \underset{S\to\infty}{\longrightarrow} \mathbb{E}_X[h(X)].\]</span></p>
-<p>This is promising, but beyond some simpler situations, it is also hard to obtain <em>independent</em> samples from the distribution <span class="math inline">\(\pi\)</span>. Fortunately, it may be easier to generate <em>dependent</em> samples and still use the sample average as an estimator. The idea is that one can construct a <em>Markov Chain</em> whose invariant distribution is <span class="math inline">\(\pi\)</span> and for which an <em>Ergodic Theorem</em> applies to justify our estimation procedure. Indeed, a Markov Chain Monte Carlo estimator, or <strong>MCMC</strong> estimator for short, is constructed by simulating a realization of a Markov Chain <span class="math inline">\(\lbrace X_s\rbrace_{s=1}^S\)</span> such that the following is true:</p>
+<p>This is promising, but one rapidly realizes that for a given <span class="math inline">\(\pi\)</span> of interest it may also be hard to obtain <em>independent</em> samples from it.</p>
+<p>Fortunately, it may be easier to generate <em>dependent</em> samples and still use the sample average as an estimator. The idea is that one can construct a <em>Markov Chain</em> whose limiting invariant distribution is <span class="math inline">\(\pi\)</span> and for which an <em>Ergodic Theorem</em> applies to justify our estimation procedure. Indeed, a Markov Chain Monte Carlo estimator, or <strong>MCMC</strong> estimator for short, is constructed by simulating a realization of a Markov Chain <span class="math inline">\(\lbrace X_s\rbrace_{s=1}^S\)</span> such that the following is true:</p>
 <p><span class="math display">\[\begin{split}
 &amp;X_s \overset{\mathcal{D}}{\underset{s\to\infty}{\longrightarrow}} \pi_X \\
 &amp;X_s \sim \pi \Longrightarrow X_{s+1} \sim \pi_X \\
 &amp;\hat{h}_S \underset{S\to\infty}{\longrightarrow} \mathbb{E}_X[h(X)]
 \end{split}\]</span></p>
-<p>For illustration purposes, let us estimate the mean of a univariate standard normal by constructing the most basic type of MCMC chain: <strong>Random Walk Metropolis</strong>. The <em>traceplot</em> in the top-left panel of <a href="#fig-rwm-normal">Figure&nbsp;<span>1.1</span></a> shows the evolution of the chain where the horizontal axis represents the sample number and the vertical axis the <span class="math inline">\(x\)</span> state of the chain; we see a rapidly oscilating ‘catterpillar’ pattern around the bulk of the distribution centered at the true mean value of <span class="math inline">\(0\)</span> signaled by the orange horizontal reference line. On the top-right panel we see the <em>histogram</em> approximation of the chain sample (blue) to the true density (orange); while not perfect, we can see a decent match. Most importantly to our estimation purposes, we see on the bottom panel the evolution of the <strong>ergodic averages</strong> otherwise known as the cummulative mean as the chain evolves; indeed there is convergence to the true mean.</p>
-<div class="cell" data-hash="01_goal_cache/html/fig-rwm-normal_1e67372eb3424d76c0fff748577dda4f">
+<p>As an illustration, let us estimate the mean of a univariate standard normal via one of the basic MCMC algorithms: <strong>Random Walk Metropolis</strong>. The <em>traceplot</em> in the top-left panel of <a href="#fig-rwm-normal">Figure&nbsp;<span>1.1</span></a> shows the evolution of the chain where the horizontal axis represents the sample number and the vertical axis the <span class="math inline">\(x\)</span> state of the chain; we see an oscilating ‘caterpillar’ pattern around the bulk of the distribution and centered at the true mean value of <span class="math inline">\(0\)</span>, signaled by the orange horizontal reference line. On the top-right panel we see the chain’s <em>histogram</em> approximation (blue) to the true density (orange); while not perfect, we can see a decent match. Most importantly to our estimation purposes, we see on the bottom panel the evolution of the <strong>ergodic averages</strong> or cummulative means; indeed there is convergence to the true mean as the chain evolves.</p>
+<div class="cell" data-hash="01_goal_cache/html/rwm_normal_chain_85cd4c9fa48df3df8c1bb10dcc96e63d">
+
+</div>
+<div class="cell" data-hash="01_goal_cache/html/fig-rwm-normal_9a3a08c39b6d232f7f47a44e8f028a0c">
 <div class="cell-output-display">
 <div id="fig-rwm-normal" class="quarto-figure quarto-figure-center anchored">
 <figure class="figure">
@@ -151,9 +159,12 @@ ul.task-list{list-style: none;}
 </div>
 </div>
 <p>This method also works for higher dimensions. If we now take a <span class="math inline">\(20\)</span>-dimensional multivariate normal with independent components, we see the same pattern of convergence of the ergodic averages to each of the marginal means (top of <a href="#fig-rwm-mvtnorm">Figure&nbsp;<span>1.2</span></a>). Thinking of a more general expectation of interest, we could for example consider the probability of the first component being bigger than the second component:</p>
-<p><span class="math display">\[\mathbb{P}_X(X_1 \geq X_2) = \mathbb{E}_X\left[\,\mathbb{I}(X_1 \geq X_2)\,\right] = 0.5,\]</span></p>
+<p><span class="math display">\[\text{Pr}[X_1 \geq X_2] = \mathbb{E}_X\left[\,1_{[0,\infty)}(X_1 - X_2)\,\right] = 0.5,\]</span></p>
 <p>the convergence is shown in the bottom of <a href="#fig-rwm-mvtnorm">Figure&nbsp;<span>1.2</span></a>.</p>
-<div class="cell" data-hash="01_goal_cache/html/fig-rwm-mvtnorm_2fb406d953583992dc20063e45eb4574">
+<div class="cell" data-hash="01_goal_cache/html/rwm_mvtnorm_chain_fbcbf2d3cc4a421ca635c4641242513f">
+
+</div>
+<div class="cell" data-hash="01_goal_cache/html/fig-rwm-mvtnorm_9a371587d7486812d31b54f60d1465a8">
 <div class="cell-output-display">
 <div id="fig-rwm-mvtnorm" class="quarto-figure quarto-figure-center anchored">
 <figure class="figure">
@@ -165,16 +176,39 @@ ul.task-list{list-style: none;}
 </div>
 <p>Of course, more complicated distributions lead to more difficult expectations and have lead to a big and exciting area of research aiming to devise better and more efficient MCMC algorithms beyond Random Walk Metropolis. For example, Gibbs Sampling, Elliptic Slice Sampling or Hamiltonian Monte Carlo are all versions of the general Metropolis-Hastings algorithm.<a href="#fn1" class="footnote-ref" id="fnref1" role="doc-noteref"><sup>1</sup></a> Another generalization to problems where there is change in dimensionality, like model selection, is Reversible Jump MCMC.</p>
 <p>While these methods have been highly successful, a situation where they fail badly is whenever the distribution been targeted exhibits multimodality. For example, consider the following mixture of normals in <a href="#fig-dmix_norm">Figure&nbsp;<span>1.3</span></a>.</p>
-<div class="cell" data-hash="01_goal_cache/html/fig-dmix_norm_2fb8dc7efd94bec0fd1c06cd515f3e37">
+<div class="cell" data-hash="01_goal_cache/html/fig-dmix_norm_8b155cb8c16fc810e6ff2fff7ea40790">
 <div class="cell-output-display">
 <div id="fig-dmix_norm" class="quarto-figure quarto-figure-center anchored">
 <figure class="figure">
-<p><img src="01_goal_files/figure-html/fig-dmix_norm-1.png" class="img-fluid figure-img"></p>
+<p><img src="01_goal_files/figure-html/fig-dmix_norm-1.png" class="img-fluid figure-img" width="396"></p>
 <p></p><figcaption aria-hidden="true" class="figure-caption">Figure 1.3: Density of a mixture of two univariate normals.</figcaption><p></p>
 </figure>
 </div>
 </div>
 </div>
+<p>The localized and mode-pulling behavior of most common MCMC algorithms prevent them to traverse, in any finite amount of time, the big valley of low probability that separates the modes, effectively trapping any given chain in one of them.</p>
+<div class="cell" data-hash="01_goal_cache/html/fig-rwm-mixnorm_40b0d05f2d6a897d1aff30395a37d7ee">
+<div class="cell-output-display">
+<div id="fig-rwm-mixnorm" class="quarto-figure quarto-figure-center anchored">
+<figure class="figure">
+<p><img src="01_goal_files/figure-html/fig-rwm-mixnorm-1.png" class="img-fluid figure-img" width="672"></p>
+<p></p><figcaption aria-hidden="true" class="figure-caption">Figure 1.4: Random Walk Metropolis biased estimation under a mixture target density with well separated modes.</figcaption><p></p>
+</figure>
+</div>
+</div>
+</div>
+<p>If the distributions were flatter, and there would be more bridging mass between the modes, then the same algorithm would be much better behaved and if tuned properly would have no major issues in this simple setting. For example, just letting the chains run longer for the alternative model with parameter <span class="math inline">\(\beta=0.05\)</span>, yields the following:</p>
+<div class="cell" data-hash="01_goal_cache/html/fig-rwm-mixnorm-temp_a3b5e3b3bd0f32944e409e6582a7eaf8">
+<div class="cell-output-display">
+<div id="fig-rwm-mixnorm-temp" class="quarto-figure quarto-figure-center anchored">
+<figure class="figure">
+<p><img src="01_goal_files/figure-html/fig-rwm-mixnorm-temp-1.png" class="img-fluid figure-img" width="672"></p>
+<p></p><figcaption aria-hidden="true" class="figure-caption">Figure 1.5: Random Walk Metropolis biased estimation under a mixture target density with well separated modes.</figcaption><p></p>
+</figure>
+</div>
+</div>
+</div>
+<p>Gains could be made with more careful tunning. However, what this example illustrates is that flatter densities are easier to explore for MCMC methods and help them escape local mode traps. This property leads to the Simulated Tempering algorithm.</p>
 
 
 <section class="footnotes footnotes-end-of-document" role="doc-endnotes">
