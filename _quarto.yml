@@ -1,0 +1,26 @@
+project:
+  type: book
+
+book:
+  title: "Non-reversible Tempering for multimodal densities"
+  subtitle: "CDT Summer Project Report"
+  author: "Fernando A. Zepeda Herrera"
+  date: "28 September 2022"
+  chapters:
+    - index.qmd
+    - 01_goal.qmd
+
+format:
+  html:
+    theme: cosmo
+  pdf:
+    documentclass: scrreprt
+    fontsize: "12pt"
+    linestretch: "1.5"
+    margin-bottom: "1.15in"
+    margin-left: "1.25in"
+    margin-right: "1.25in"
+    margin-top: "1.15in"
+
+
+

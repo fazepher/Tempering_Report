@@ -1,0 +1,130 @@
+# The Goal
+
+```{r}
+#| echo: false
+#| warning: false
+#| message: false
+
+library(tidyverse)
+library(patchwork)
+library(future)
+library(furrr)
+set.seed(580207)
+
+```
+
+A common statistical goal is to estimate an expectated value of a function $h$ of a random variable $X \in \mathcal{X}\subset\mathbb{R}^d$: 
+$$\mathbb{E}_X[h(X)] = \int\limits_{\mathcal{X}} h(x) d\pi_X.$$
+Despite the simple expression above, these integrals are generally intractable so that one cannot compute them analytically. Furthermore, the dimension $d$ is sufficiently high, as to also render numerical integration infeasable. 
+
+One would like then to resort to a *Law of Large numbers* via Monte Carlo methods. That is, if one is able to simulate in a computer a random sample $\lbrace X_s\rbrace_{s=1}^S \overset{iid}{\sim} \pi_X$, then a reasonable estimator of the target expectation is the sample average since the latter converges to the former as $S$ grows: 
+$$\hat{h}_S := \dfrac{1}{S}\sum\limits_{s=1}^S h(X_s) \underset{S\to\infty}{\longrightarrow} \mathbb{E}_X[h(X)].$$
+
+This is promising, but beyond some simpler situations, it is also hard to obtain *independent* samples from the distribution $\pi$. Fortunately, it may be easier to generate *dependent* samples and still use the sample average as an estimator. The idea is that one can construct a *Markov Chain* whose invariant distribution is $\pi$ and for which an *Ergodic Theorem* applies to justify our estimation procedure. Indeed, a Markov Chain Monte Carlo estimator, or **MCMC** estimator for short, is constructed by simulating a realization of a Markov Chain $\lbrace X_s\rbrace_{s=1}^S$ such that the following is true:
+$$\begin{split}
+&X_s \overset{\mathcal{D}}{\underset{s\to\infty}{\longrightarrow}} \pi_X \\
+&X_s \sim \pi \Longrightarrow X_{s+1} \sim \pi_X \\
+&\hat{h}_S \underset{S\to\infty}{\longrightarrow} \mathbb{E}_X[h(X)]
+\end{split}$$
+
+For illustration purposes, let us estimate the mean of a univariate standard normal by constructing the most basic type of MCMC chain: **Random Walk Metropolis**. The *traceplot* in the top-left panel of @fig-rwm-normal shows the evolution of the chain where the horizontal axis represents the sample number and the vertical axis the $x$ state of the chain; we see a rapidly oscilating 'catterpillar' pattern around the bulk of the distribution centered at the true mean value of $0$ signaled by the orange horizontal reference line. On the top-right panel we see the *histogram* approximation of the chain sample (blue) to the true density (orange); while not perfect, we can see a decent match. Most importantly to our estimation purposes, we see on the bottom panel the evolution of the **ergodic averages** otherwise known as the cummulative mean as the chain evolves; indeed there is convergence to the true mean.  
+
+```{r rwm_normal}
+#| echo: false
+#| cache: true
+#| label: fig-rwm-normal
+#| fig-cap: Random Walk Metropolis estimation of a univariate standard normal density.
+
+rwm_normal <- tempeRing:::rwm_sampler_chain(tempeRing:::lnorm, scale = 5, 
+                                            S = 3000, burn = 1000, silent = TRUE)
+
+rwm_normal_x <- tibble(x = rwm_normal$x, s = seq_along(x), mean = cummean(x)) 
+
+rwm_normal_lims <- max(abs(rwm_normal_x$x)) + 0.5
+rwm_normal_x_trace <- rwm_normal_x |> 
+  ggplot(aes(x=s,y=x)) + 
+  geom_hline(yintercept = 0, color = "chocolate2") + 
+  geom_path(color = "steelblue4") + 
+  labs(title = "Traceplot") + 
+  ylim(-rwm_normal_lims, rwm_normal_lims) + 
+  theme_classic()
+rwm_normal_x_hist <- rwm_normal_x |> 
+  ggplot(aes(x=x)) + 
+  geom_histogram(aes(y=after_stat(density)), bins = 30, 
+                 color = "steelblue4", fill = "transparent") +
+  stat_function(fun = dnorm, color = "chocolate2", n = 1001) + 
+  labs(title = "Sample Histogram") + 
+  xlim(-rwm_normal_lims, rwm_normal_lims) + 
+  theme_classic()
+rwm_normal_ergo_lims <- max(abs(rwm_normal_x$mean)) + 0.05
+rwm_normal_x_ergo <- rwm_normal_x |> 
+  ggplot(aes(x=s,y=mean)) + 
+  geom_hline(yintercept = 0, color = "chocolate2") + 
+  geom_path(color = "steelblue4") + 
+  labs(title = "Ergodic Averages") + 
+  ylim(-rwm_normal_ergo_lims, rwm_normal_ergo_lims) + 
+  theme_classic()
+
+(rwm_normal_x_trace + rwm_normal_x_hist) / rwm_normal_x_ergo
+
+```
+
+This method also works for higher dimensions. If we now take a $20$-dimensional multivariate normal with independent components, we see the same pattern of convergence of the ergodic averages to each of the marginal means (top of @fig-rwm-mvtnorm). Thinking of a more general expectation of interest, we could for example consider the probability of the first component being bigger than the second component: 
+$$\mathbb{P}_X(X_1 \geq X_2) = \mathbb{E}_X\left[\,\mathbb{I}(X_1 \geq X_2)\,\right] = 0.5,$$
+the convergence is shown in the bottom of @fig-rwm-mvtnorm. 
+
+```{r rwm_mvtnorm}
+#| cache: true
+#| echo: false
+#| label: fig-rwm-mvtnorm
+#| fig.cap: Convergence of Random Walk Metropolis ergodic averages to the marginal means of a 20-dimensional multivariate independent normal.
+
+rwm_mvtnorm <- tempeRing:::rwm_sampler_chain(tempeRing:::lmvtnorm, mu = rep(0, 20),
+                                             scale = diag(0.3,20), 
+                                             S = 3000, burn = 1000, silent = TRUE)
+
+rwm_mvtnorm_x <- data.frame(rwm_mvtnorm$x) |> tibble() |> 
+  mutate(s = row_number()) 
+
+rwm_mvtnorm_ergo_comp <- rwm_mvtnorm_x |> 
+  gather(Component, Value, -s) |> 
+  arrange(s) |> 
+  group_by(Component) |> 
+  mutate(mean = cummean(Value)) |>
+  ggplot(aes(x=s,y=mean,group=Component)) + 
+  geom_hline(yintercept = 0, color = "chocolate2") + 
+  geom_path(color = "steelblue4") + 
+  labs(title = "Ergodic Averages of each Component") + 
+  theme_classic()
+
+rwm_mvtnorm_ergo_dif <- rwm_mvtnorm_x |> 
+  mutate(dif = X1 > X2, 
+         mean = cummean(dif)) |>
+  ggplot(aes(x=s,y=mean)) + 
+  geom_hline(yintercept = 0.5, color = "chocolate2") + 
+  geom_path(color = "steelblue4") + 
+  labs(title = "Ergodic Proportion of samples where X1 > X2") + 
+  theme_classic()
+
+rwm_mvtnorm_ergo_comp / rwm_mvtnorm_ergo_dif
+
+```
+
+Of course, more complicated distributions lead to more difficult expectations and have lead to a big and exciting area of research aiming to devise better and more efficient MCMC algorithms beyond Random Walk Metropolis. For example, Gibbs Sampling, Elliptic Slice Sampling or Hamiltonian Monte Carlo are all versions of the general Metropolis-Hastings algorithm.^[It is well documented that the growth of MCMC statistical methodology started with Gibbs Sampling and the availability of software like BUGS, which has continued and expanded to tools like JAGS, Stan, PyMC, BlackJAX or Turing] Another generalization to problems where there is change in dimensionality, like model selection, is Reversible Jump MCMC. 
+
+While these methods have been highly successful, a situation where they fail badly is whenever the distribution been targeted exhibits multimodality. For example, consider the following mixture of normals in @fig-dmix_norm.
+
+```{r dmix_norm}
+#| cache: true
+#| echo: false
+#| label: fig-dmix_norm
+#| fig-cap: Density of a mixture of two univariate normals.
+#| out-width: 0.25\\textwidth
+
+ggplot() + 
+  stat_function(fun = tempeRing::dmix_norm, color = "chocolate2",
+                args = list(w = c(0.5,0.5), mean = c(-20,20), sd = c(3, 3)), n = 1001) + 
+  xlim(-40, 40) + 
+  theme_classic()
+```
+

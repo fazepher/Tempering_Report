@@ -1,0 +1,5 @@
+# Preface {.unnumbered}
+
+This document contains my First-Year Summer Project report within the Statistics CDT at the University of Warwick. It attempts to be a fairly concise, accesible, and reproducible exposition of the work done under the helpful supervision of [Prof. Gareth O. Roberts](https://warwick.ac.uk/fac/sci/statistics/staff/academic-research/roberts/) and [Dr. Nick Tawn](https://warwick.ac.uk/fac/sci/statistics/staff/academic-research/tawn/), both of whom I thank dearly. 
+
+It is build through [Quarto Books](https://quarto.org/docs/books), allowing the reader to access it through either `HTML` or `pdf` formats. 
