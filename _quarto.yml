@@ -9,9 +9,13 @@ book:
   chapters:
     - index.qmd
     - 01_goal.qmd
+    - references.qmd
   search: true
   repo-url: https://github.com/fazepher/Tempering_Report
   downloads: [pdf]
+
+bibliography: biblio_tempering_report.bib
+csl: jrss.csl
 
 execute:
   cache: true
