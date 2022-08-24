@@ -26,7 +26,8 @@
   abstract = {From its inception in the 1950s to the modern frontiers of applied statistics, Markov chain Monte Carlo has been one of the most ubiquitous and successful methods in statistical computing. The development of the method in that time has been fueled by not only increasingly difficult problems but also novel techniques adopted from physics. Here, the history of Markov chain Monte Carlo is reviewed from its inception with the Metropolis method to the contemporary state-of-the-art in Hamiltonian Monte Carlo, focusing on the evolving interplay between the statistical and physical perspectives of the method.},
   langid = {english},
   keywords = {Hamiltonian Monte Carlo,Markov chain Monte Carlo,molecular dynamics,Monte Carlo},
-  annotation = {\_eprint: https://onlinelibrary.wiley.com/doi/pdf/10.1002/andp.201700214}
+  annotation = {\_eprint: https://onlinelibrary.wiley.com/doi/pdf/10.1002/andp.201700214},
+  file = {/Users/fazepher/Dropbox/Zotero/Betancourt/Betancourt_2019_The_Convergence_of_Markov_Chain_Monte_Carlo_Methods.pdf}
 }
 
 @misc{Betancourt20a,
@@ -84,7 +85,8 @@
   publisher = {{[American Statistical Association, Taylor \& Francis, Ltd.]}},
   issn = {0162-1459},
   doi = {10.2307/2291683},
-  abstract = {A critical issue for users of Markov chain Monte Carlo (MCMC) methods in applications is how to determine when it is safe to stop sampling and use the samples to estimate characteristics of the distribution of interest. Research into methods of computing theoretical convergence bounds holds promise for the future but to date has yielded relatively little of practical use in applied work. Consequently, most MCMC users address the convergence problem by applying diagnostic tools to the output produced by running their samplers. After giving a brief overview of the area, we provide an expository review of 13 convergence diagnostics, describing the theoretical basis and practical implementation of each. We then compare their performance in two simple models and conclude that all of the methods can fail to detect the sorts of convergence failure that they were designed to identify. We thus recommend a combination of strategies aimed at evaluating and accelerating MCMC sampler convergence, including applying diagnostic procedures to a small number of parallel chains, monitoring autocorrelations and cross-correlations, and modifying parametrizations or sampling algorithms appropriately. We emphasize, however, that it is not possible to say with certainty that a finite sample from an MCMC algorithm is representative of an underlying stationary distribution.}
+  abstract = {A critical issue for users of Markov chain Monte Carlo (MCMC) methods in applications is how to determine when it is safe to stop sampling and use the samples to estimate characteristics of the distribution of interest. Research into methods of computing theoretical convergence bounds holds promise for the future but to date has yielded relatively little of practical use in applied work. Consequently, most MCMC users address the convergence problem by applying diagnostic tools to the output produced by running their samplers. After giving a brief overview of the area, we provide an expository review of 13 convergence diagnostics, describing the theoretical basis and practical implementation of each. We then compare their performance in two simple models and conclude that all of the methods can fail to detect the sorts of convergence failure that they were designed to identify. We thus recommend a combination of strategies aimed at evaluating and accelerating MCMC sampler convergence, including applying diagnostic procedures to a small number of parallel chains, monitoring autocorrelations and cross-correlations, and modifying parametrizations or sampling algorithms appropriately. We emphasize, however, that it is not possible to say with certainty that a finite sample from an MCMC algorithm is representative of an underlying stationary distribution.},
+  file = {/Users/fazepher/Dropbox/Zotero/Cowles_Carlin/Cowles_Carlin_1996_Markov_Chain_Monte_Carlo_Convergence_Diagnostics.pdf}
 }
 
 @incollection{Craiu.Meng11,
@@ -125,7 +127,8 @@
   pages = {1--23},
   issn = {0006-3444},
   doi = {10.1093/biomet/asz066},
-  abstract = {In a 1970 Biometrika paper, W. K. Hastings developed a broad class of Markov chain algorithms for sampling from probability distributions that are difficult to sample from directly. The algorithm draws a candidate value from a proposal distribution and accepts the candidate with a probability that can be computed using only the unnormalized density of the target distribution, allowing one to sample from distributions known only up to a constant of proportionality. The stationary distribution of the corresponding Markov chain is the target distribution one is attempting to sample from. The Hastings algorithm generalizes the Metropolis algorithm to allow a much broader class of proposal distributions instead of just symmetric cases. An important class of applications for the Hastings algorithm corresponds to sampling from Bayesian posterior distributions, which have densities given by a prior density multiplied by a likelihood function and divided by a normalizing constant equal to the marginal likelihood. The marginal likelihood is typically intractable, presenting a fundamental barrier to implementation in Bayesian statistics. This barrier can be overcome by Markov chain Monte Carlo sampling algorithms. Amazingly, even after 50 years, the majority of algorithms used in practice today involve the Hastings algorithm. This article provides a brief celebration of the continuing impact of this ingenious algorithm on the 50th anniversary of its publication.}
+  abstract = {In a 1970 Biometrika paper, W. K. Hastings developed a broad class of Markov chain algorithms for sampling from probability distributions that are difficult to sample from directly. The algorithm draws a candidate value from a proposal distribution and accepts the candidate with a probability that can be computed using only the unnormalized density of the target distribution, allowing one to sample from distributions known only up to a constant of proportionality. The stationary distribution of the corresponding Markov chain is the target distribution one is attempting to sample from. The Hastings algorithm generalizes the Metropolis algorithm to allow a much broader class of proposal distributions instead of just symmetric cases. An important class of applications for the Hastings algorithm corresponds to sampling from Bayesian posterior distributions, which have densities given by a prior density multiplied by a likelihood function and divided by a normalizing constant equal to the marginal likelihood. The marginal likelihood is typically intractable, presenting a fundamental barrier to implementation in Bayesian statistics. This barrier can be overcome by Markov chain Monte Carlo sampling algorithms. Amazingly, even after 50 years, the majority of algorithms used in practice today involve the Hastings algorithm. This article provides a brief celebration of the continuing impact of this ingenious algorithm on the 50th anniversary of its publication.},
+  file = {/Users/fazepher/Dropbox/Zotero/Dunson_Johndrow/Dunson_Johndrow_2020_The_Hastings_algorithm_at_fifty.pdf}
 }
 
 @article{Earl.Deem05,
@@ -251,7 +254,8 @@
   issn = {1939-3539},
   doi = {10.1109/TPAMI.1984.4767596},
   abstract = {We make an analogy between images and statistical mechanics systems. Pixel gray levels and the presence and orientation of edges are viewed as states of atoms or molecules in a lattice-like physical system. The assignment of an energy function in the physical system determines its Gibbs distribution. Because of the Gibbs distribution, Markov random field (MRF) equivalence, this assignment also determines an MRF image model. The energy function is a more convenient and natural mechanism for embodying picture attributes than are the local characteristics of the MRF. For a range of degradation mechanisms, including blurring, nonlinear deformations, and multiplicative or additive noise, the posterior distribution is an MRF with a structure akin to the image model. By the analogy, the posterior distribution defines another (imaginary) physical system. Gradual temperature reduction in the physical system isolates low energy states (``annealing''), or what is the same thing, the most probable states under the Gibbs distribution. The analogous operation under the posterior distribution yields the maximum a posteriori (MAP) estimate of the image given the degraded observations. The result is a highly parallel ``relaxation'' algorithm for MAP estimation. We establish convergence properties of the algorithm and we experiment with some simple pictures, for which good restorations are obtained at low signal-to-noise ratios.},
-  keywords = {Additive noise,Annealing,Bayesian methods,Deformable models,Degradation,Energy states,Gibbs distribution,image restoration,Image restoration,line process,MAP estimate,Markov random field,Markov random fields,relaxation,scene modeling,spatial degradation,Stochastic processes,Temperature distribution}
+  keywords = {Additive noise,Annealing,Bayesian methods,Deformable models,Degradation,Energy states,Gibbs distribution,image restoration,Image restoration,line process,MAP estimate,Markov random field,Markov random fields,relaxation,scene modeling,spatial degradation,Stochastic processes,Temperature distribution},
+  file = {/Users/fazepher/Dropbox/Zotero/Geman_Geman/Geman_Geman_1984_Stochastic_Relaxation,_Gibbs_Distributions,_and_the_Bayesian_Restoration_of.pdf}
 }
 
 @article{Geyer05,
@@ -261,7 +265,7 @@
   month = nov,
   pages = {166},
   langid = {english},
-  file = {/Users/fazepher/Dropbox/Zotero/Geyer/Geyer_Markov_Chain_Monte_Carlo_Lecture_Notes.pdf}
+  file = {/Users/fazepher/Dropbox/Zotero/Geyer/Geyer_2005_Markov_Chain_Monte_Carlo_Lecture_Notes.pdf}
 }
 
 @incollection{Geyer11,
@@ -351,6 +355,22 @@
   abstract = {Spatial point processes arise naturally in many contexts, including population studies, forestry, epidemiology, agriculture, and material science; for more},
   isbn = {978-0-429-13850-8},
   file = {/Users/fazepher/Dropbox/Zotero/Huber/Huber_2011_Spatial_Point_Processes.pdf}
+}
+
+@article{Hukushima.Nemoto96,
+  title = {Exchange {{Monte Carlo Method}} and  {{Application}} to {{Spin Glass Simulations}}},
+  author = {Hukushima, Koji and Nemoto, Koji},
+  year = {1996},
+  month = jun,
+  journal = {Journal of the Physical Society of Japan},
+  volume = {65},
+  number = {6},
+  pages = {1604--1608},
+  publisher = {{The Physical Society of Japan}},
+  issn = {0031-9015},
+  doi = {10.1143/JPSJ.65.1604},
+  abstract = {We propose an efficient Monte Carlo algorithm for simulating a ``hardly-relaxing'' system, in which many replicas with different temperatures are simultaneously simulated and a virtual process exchanging configurations of these replicas is introduced. This exchange process is expected to let the system at low temperatures escape from a local minimum. By using this algorithm the three-dimensional {$\pm$} J Ising spin glass model is studied. The ergodicity time in this method is found much smaller than that of the multi-canonical method. In particular the time correlation function almost follows an exponential decay whose relaxation time is comparable to the ergodicity time at low temperatures. It suggests that the system relaxes very rapidly through the exchange process even in the low temperature phase.},
+  keywords = {exchange Monte Carlo method,extended ensemble method,spin glass}
 }
 
 @book{Liu04,
@@ -630,7 +650,8 @@
   pages = {335--349},
   issn = {1464-3510},
   doi = {10.1093/biomet/asab013},
-  abstract = {Most Markov chain Monte Carlo methods operate in discrete time and are reversible with respect to the target probability. Nevertheless, it is now understood that the use of nonreversible Markov chains can be beneficial in many contexts. In particular, the recently proposed bouncy particle sampler leverages a continuous-time and nonreversible Markov process, and empirically shows state-of-the-art performance when used to explore certain probability densities; however, its implementation typically requires the computation of local upper bounds on the gradient of the log target density. We present the discrete bouncy particle sampler, a general algorithm based on a guided random walk, a partial refreshment of direction and a delayed-rejection step. We show that the bouncy particle sampler can be understood as a scaling limit of a special case of our algorithm. In contrast to the bouncy particle sampler, implementing the discrete bouncy particle sampler only requires pointwise evaluation of the target density and its gradient. We propose extensions of the basic algorithm for situations when the exact gradient of the target density is not available. In a Gaussian setting, we establish a scaling limit for the radial process as the dimension increases to infinity. We leverage this result to obtain the theoretical efficiency of the discrete bouncy particle sampler as a function of the partial-refreshment parameter, which leads to a simple and robust tuning criterion. A further analysis in a more general setting suggests that this tuning criterion applies more generally. Theoretical and empirical efficiency curves are then compared for different targets and algorithm variations.}
+  abstract = {Most Markov chain Monte Carlo methods operate in discrete time and are reversible with respect to the target probability. Nevertheless, it is now understood that the use of nonreversible Markov chains can be beneficial in many contexts. In particular, the recently proposed bouncy particle sampler leverages a continuous-time and nonreversible Markov process, and empirically shows state-of-the-art performance when used to explore certain probability densities; however, its implementation typically requires the computation of local upper bounds on the gradient of the log target density. We present the discrete bouncy particle sampler, a general algorithm based on a guided random walk, a partial refreshment of direction and a delayed-rejection step. We show that the bouncy particle sampler can be understood as a scaling limit of a special case of our algorithm. In contrast to the bouncy particle sampler, implementing the discrete bouncy particle sampler only requires pointwise evaluation of the target density and its gradient. We propose extensions of the basic algorithm for situations when the exact gradient of the target density is not available. In a Gaussian setting, we establish a scaling limit for the radial process as the dimension increases to infinity. We leverage this result to obtain the theoretical efficiency of the discrete bouncy particle sampler as a function of the partial-refreshment parameter, which leads to a simple and robust tuning criterion. A further analysis in a more general setting suggests that this tuning criterion applies more generally. Theoretical and empirical efficiency curves are then compared for different targets and algorithm variations.},
+  file = {/Users/fazepher/Dropbox/Zotero/Sherlock_Thiery/Sherlock_Thiery_2022_A_discrete_bouncy_particle_sampler.pdf}
 }
 
 @incollection{Stenning.Dyk21,
