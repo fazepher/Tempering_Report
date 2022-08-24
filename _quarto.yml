@@ -9,6 +9,7 @@ book:
   chapters:
     - index.qmd
     - 01_goal.qmd
+    - 02_tempering.qmd
     - references.qmd
   search: true
   repo-url: https://github.com/fazepher/Tempering_Report
@@ -17,17 +18,25 @@ book:
 bibliography: biblio_tempering_report.bib
 csl: jrss.csl
 
+knitr: 
+  opts_knit: 
+    cache.extra: rand_seed
+    dev.args: list(bg = "transparent")
+
 execute:
   cache: true
+  freeze: auto
   
 format:
   html:
-    theme: cosmo
+    theme: [cosmo, custom_style.scss]
     echo: false
   pdf:
     documentclass: scrreprt
-    fontsize: "12pt"
+    fontsize: "11pt"
+    linestretch: "1.25"
     echo: false
+
 
 
 
