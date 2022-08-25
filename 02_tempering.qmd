@@ -355,7 +355,7 @@ or, in the log-scale,
 $$(\beta_{k+1} - \beta_k)\left(\log\big[\pi_X(x_k^{(s)})\big] - \log\big[\pi_X(x_{k+1}^{(s)})\big]\right).$${#eq-pt-logratio}
 Notice that we no longer need any $g_k$ tuning parameters, only the temperature schedule, albeit at the extra computational cost of replicating the system. But modern parallel computing architectures, be they a single computer with multi-core capabilities or bigger cluster/distributed systems, may allow us such an extension.^[Depending on the architecture and nature of the problem actually swapping $\beta$ values among chains/machines instead of exchanging the full state may prove advantageous to reduce overhead.] 
 
-We still require, though, an exchange between succesive and "close enough" levels to ensure that the "loss in energy" in @eq-pt-logratio is not to big when attempting a swap between a more likely state at a hotter level and a less likely one at a colder level.^[A big "loss in energy" means a very negative value of the term $\left(\log\big[\pi_X(x_k^{(s)})\big] - \log\big[\pi_X(x_{k+1}^{(s)})\big]\right)$, which upon exponentiation would yield a very low Metropolis acceptance probability.] This type of swaps are needed to effectively allow *communication* between the target level and the hottest one, were we are able to escape local modes. Hence, a key objective of Parallel Tempering methodology is to ensure high *round trip rates* @Syed.etal22, in which a state starting at one of the extremes of the temperature schedule is able to reach the other extreme and back. 
+We still require, though, an exchange between succesive and "close enough" levels to ensure that the "loss in energy" in @eq-pt-logratio is not to big when attempting a swap between a more likely state at a hotter level and a less likely one at a colder level.^[A big "loss in energy" means a very negative value of the term $\left(\log\big[\pi_X(x_k^{(s)})\big] - \log\big[\pi_X(x_{k+1}^{(s)})\big]\right)$, which upon exponentiation would yield a very low Metropolis acceptance probability.] This type of swaps are needed to effectively allow *communication* between the target level and the hottest one, were we are able to escape local modes. Hence, a key objective of Parallel Tempering methodology is to ensure high *round trip rates* [@Syed.etal22], in which a state starting at one of the extremes of the temperature schedule is able to reach the other extreme and back. 
 
 We will later return to this point, but first we implement PT on the same normal mixture example of the preceding section. @fig-pt-mixnorm shows, as before, the traceplots for all the chains at each level as well as the histogram approximation and ergodic average estimations at the original target level $\beta_1=1$. 
 
@@ -441,7 +441,7 @@ pt_mixnorm_trace + (pt_mixnorm_hist / pt_mixnorm_ergo)
 ```{r pt-reps}
 #| results: FALSE
 
-get_pt_rep <- function(k, pt_fit, C, t, w){
+get_pt_rep <- function(k, pt_fit, C, t, w, burn = 50){
   cycle_length <- t + w
   d <- dim(pt_fit$x)[3]
   x <- matrix(nrow = C*cycle_length, ncol = d)
@@ -455,6 +455,7 @@ get_pt_rep <- function(k, pt_fit, C, t, w){
   }
   
   pt_mixnorm_x <- as_tibble(data.frame(x)) |> 
+    slice(-seq(1,burn)) |> 
     mutate(s = row_number(), mean = cummean(x),
            k = k)
   
@@ -468,35 +469,103 @@ replicate_pt_erg <- function(r){
     swap_type = "naive", l_target = tempeRing:::ulmix_norm_temp, 
     w = c(0.5,0.5), mean = c(-20,20), sd = c(3, 3),  
     beta_schedule = 0.6^(0:4),
-    scale = list(5.5, 7.5, 10, 15, 25), 
-    Cycles = 1051, Temp_Moves = 1, Within_Moves = 5, 
+    scale = 6.25, 
+    Cycles = 5051, Temp_Moves = 1, Within_Moves = 5, 
     silent = TRUE)
   
-  pt_rep_erg <- mutate(get_pt_rep(1, pt_fit = pt_rep, C = 1050, t = 1, w = 5), r = r)
+  pt_rep_erg <- mutate(get_pt_rep(1, pt_fit = pt_rep, C = 5050, t = 1, w = 5), r = r)
   
   return(pt_rep_erg)
   
 }
 
 plan(multisession, workers=15)
-pt_erg_reps <- future_map_dfr(1:300, replicate_pt_erg, .options = furrr_options(seed=TRUE))
+pt_erg_reps <- future_map_dfr(1:60, replicate_pt_erg, .options = furrr_options(seed=TRUE))
 pt_erg_reps_final <- slice_max(group_by(pt_erg_reps,r),s)
 plan(sequential)
 ```
 
+Now, since we are now running 5 chains who exchange information one may wonder if this is actually better than running 5 parallel *simulated tempering* chains and agregating the results at the end. Indeed, this extra computing effort required was "one of the reasons for the slow adoption of this method" [@Earl.Deem05 p.3910]. We can compare both methods. 
+
+In the preceeding section we ran 300 ST chains for $5,000$ cycles. We can split them in 60 blocks of 5 parallel chains each and obtain their weighted empirical average^[As each chain contains a different number of final samples at the coldest level.]. On the other hand, we can run PT 60 times with $5,000$ cycles and see the performance. The top panel of @fig-pt-reps shows the ergodic averages of those 60 PT runs. In the bottom panel we have their absolut error comparison against the 60 ST blocks: the points represent each run's observed error, boxplots for the absolute errors per algorithm are shown as well as the Root Mean Square Error. We see that PT had a lower RMSE than ST. 
+
 ```{r pt-reps-fig}
 #| label: fig-pt-reps
-#| fig-cap: Ergodic Averages for 300 replications of Parallel Tempering targetting the normal mixture. The gray lines represent the evolution of the averages; the blue diamonds the final cummulative mean; the orange horizontal line is the reference of the true value of the mean. 
+#| fig-cap: Ergodic Averages for 60 replications of Parallel Tempering targetting the normal mixture. The blue lines represent the evolution of the averages and the orange horizontal one is the reference of the true value of the mean. 
 
 pt_erg_reps_plot <- pt_erg_reps |> 
   ggplot(aes(x=s,y=mean,group=r)) + 
   geom_hline(yintercept = 0, color = naranja) + 
-  geom_path(color = "gray85", alpha = 0.3, size = rel(0.4)) + 
-  geom_point(data = pt_erg_reps_final, size = rel(3), 
-             color = azul, alpha = 0.3, shape = 18) + 
-  labs(title = "Ergodic Averages of 300 replications", subtitle = "(target level only)") 
+  geom_path(color = azul, alpha = 0.3, size = rel(0.4)) + 
+  labs(title = "Ergodic Averages of 60 replications", subtitle = "(target level only)") 
 
-pt_erg_reps_plot
+pt_st_compara_data <- st_erg_reps_final |> 
+  mutate(block = r %% 60) |> 
+  group_by(block) |> 
+  summarise(mean = weighted.mean(mean,s), algorithm = "ST") |> 
+  bind_rows(mutate(pt_erg_reps_final, algorithm = "PT")) |>
+  mutate(y = 5*as.integer(as.factor(algorithm)),
+         error = abs(mean)) |> 
+  group_by(algorithm) |> 
+  mutate(RMSE = sqrt(mean(error^2)))
+pt_st_compara <- pt_st_compara_data  |> 
+  ggplot(aes(x = error, color = algorithm)) +
+  geom_boxplot(aes(y = y - 0.5, fill = algorithm), alpha = 0.1, 
+               outlier.colour = NA, width = 2) +
+  geom_jitter(aes(y = y + 1.5), alpha = 0.3, size = rel(1), width = 0, height = 0.75) +
+  geom_text(data = distinct(pt_st_compara_data,algorithm,RMSE), 
+             aes(y = 0, x = RMSE, label = round(RMSE,2))) + 
+  annotate("text", color = gris, x = min(pt_st_compara_data$RMSE) - 0.75, 
+           y = 0, label = "RMSE:") + 
+  scale_color_manual(values = c(azul, aqua)) +
+  scale_fill_manual(values = c(azul, aqua)) +
+  scale_y_reverse(breaks = c(5, 10), labels = c("PT","ST"), limits = c(15,-2)) + 
+  theme(legend.position = "none") + 
+  labs(title = "Comparison between ST and PT", y = "algorithm", x = "absolute error")
+
+
+(pt_erg_reps_plot / pt_st_compara)
+
 ```
 
-Just as with ST we report the empirical RMSE, in this case  `r round(sqrt(mean(pt_erg_reps_final$mean^2)),3)`.
+This difference in performance would only be increased if we are interested in more challenging estimations. For example, if we consider $\mathbb{P}(X > 25)$, we estimate it as the proportion of samples in our chains that exceeded 25, given that ST ends up with substantially less samples than PT the variance of its estimations is much higher than those of the PT runs. Indeed on @fig-p25-compara we can see the estimations and RMSE of said probability alongside the true value obtained by numerical integration (orange horizontal line). The RMSE for ST is more than double that of PT. 
+
+```{r p25-compara}
+#| label: fig-p25-compara
+#| fig-cap: Comparison of estimates by ST and PT of $\mathbb{P}(X > 25)$ for the normal mixture across the 60 replications. 
+
+P25_num <- integrate(tempeRing:::dmix_norm,lower = 25, upper = Inf, w = c(0.5,0.5), mean = c(-20,20), sd = c(3,3),abs.tol = 1e-10)$value
+
+st_p25_data <- st_erg_reps |> 
+  mutate(block = r %% 60) |> 
+  group_by(block) |> 
+  summarise(P25 = mean(x > 25), algorithm = "ST") 
+pt_p25_data <- pt_erg_reps |> 
+  group_by(r) |> 
+  summarise(P25 = mean(x > 25), algorithm = "PT") 
+
+compara_pt_st_p25_data <- st_p25_data |> 
+  bind_rows(pt_p25_data) |> 
+  group_by(algorithm) |> 
+  mutate(RMSE = sqrt(mean((P25 - P25_num)^2))) |> 
+  ungroup()
+
+compara_pt_st_p25_data |> 
+  ggplot(aes(x=algorithm,y=P25, color = algorithm)) + 
+  geom_hline(yintercept = P25_num, color = naranja) + 
+  geom_jitter(width = 0.25, height = 0) + 
+  geom_text(data = distinct(compara_pt_st_p25_data, algorithm, RMSE), 
+            aes(y = max(compara_pt_st_p25_data$P25) + 0.01, label = round(RMSE,3)),
+            show.legend = FALSE, size = rel(7)) + 
+  annotate("text", color = gris, x = 1.5, 
+           y = max(compara_pt_st_p25_data$P25) + 0.01, label = "RMSE", size = rel(7)) + 
+  scale_color_manual(values = c(azul,aqua)) + 
+  labs(title = "Estimated Probabilities across 60 replications", 
+       subtitle = "(target level only)", 
+       y = "Pr(X>25)") + 
+  theme(legend.position = "none")
+
+```
+
+Hence, like @Earl.Deem05 [p. 3910] put it: "it became clear that a parallel tempering simulation is more than [1/K] times more efficient than a standard, single-temperature Monte Carlo simulation." So, we focus our attention to Parallel Tempering and its own challenges.
+
