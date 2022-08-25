@@ -1,0 +1,35 @@
+# Challenges
+
+```{r}
+#| cache: false
+#| warning: false
+#| message: false
+
+library(tidyverse)
+library(patchwork)
+library(future)
+library(furrr)
+knitr::opts_chunk$set(
+  dev.args = list(bg = "transparent")
+)
+set.seed(7103)
+
+theme_set(theme_classic() + 
+            theme(plot.background = element_rect(fill = "transparent", color = "transparent"),
+                  panel.background = element_rect(fill = "transparent"),
+                  legend.background = element_rect(fill = "transparent"),
+                  legend.box.background = element_rect(color = "transparent"),
+                  strip.background = element_rect(fill = "transparent")))
+azul <- "steelblue4"
+naranja <- "chocolate2"
+aqua <- "darkcyan" 
+morado <- "blueviolet"
+rosa <- "#EA526F"
+gris <- "gray55"
+cafe <- "coral4"
+colores_ord <- c(gris, aqua, azul, morado, rosa, naranja, cafe)
+
+```
+
+
+As with every methodology, a "vanilla" PT implementation has its shortcomings in some complicated situations. 

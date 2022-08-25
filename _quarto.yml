@@ -10,6 +10,7 @@ book:
     - index.qmd
     - 01_goal.qmd
     - 02_tempering.qmd
+    - 03_challenges.qmd
     - references.qmd
   search: true
   repo-url: https://github.com/fazepher/Tempering_Report
