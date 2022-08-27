@@ -1,4 +1,4 @@
-# Challenges
+# Leveraging Modal Information
 
 ```{r}
 #| cache: false
@@ -12,7 +12,7 @@ library(furrr)
 knitr::opts_chunk$set(
   dev.args = list(bg = "transparent")
 )
-set.seed(7103)
+set.seed(92868)
 
 theme_set(theme_classic() + 
             theme(plot.background = element_rect(fill = "transparent", color = "transparent"),
@@ -32,4 +32,692 @@ colores_ord <- c(gris, aqua, azul, morado, rosa, naranja, cafe)
 ```
 
 
-As with every methodology, a "vanilla" PT implementation has its shortcomings in some complicated situations. 
+As with every methodology, PT has its shortcomings. We discuss some of them here and corresponding proposals found in the literature aiming at address them by leveraging modal information. 
+
+## Direct Swapping
+
+Remember that one reason we cannot have very big temperature spacings is because any energy loss incurred when attempting to swap states gets magnified by the spacing (see @eq-pt-logratio). Suppose for the sake of exposition that we only had two temperature levels, a cold normal target with unit variance and a tempered version of it. In this very simple and unimodal case, tempering amounts to rescaling the variance:
+$$\pi_X(x) = \phi(x | \mu, \sigma = 1) \Longrightarrow \big[\pi_X(x)\big]^\beta \propto \exp\left\lbrace \dfrac{-\beta (x-\mu)^2}{2} \right\rbrace \propto \phi(x| \mu, \sigma = 1/\sqrt{\beta}).$$
+
+```{r entiende-quanTA1}
+entiende_quanTA1_q <- c(0.025, 0.1, 0.35, 0.5, 0.65, 0.9, 0.975)
+entiende_quanTA1_b <- 0.15
+entiende_quanTA1 <- tibble(x1 = qnorm(entiende_quanTA1_q),
+                           f1 = dnorm(x1),
+                           q1 = pnorm(x1),
+                           x2 = map_dbl(x1, tempeRing:::quanta_transformation, 
+                                        mode = 0, 
+                                        beta_1 = 1, 
+                                        beta_2 = entiende_quanTA1_b),
+                           f2 = dnorm(x2, sd = 1/sqrt(entiende_quanTA1_b)),
+                           q2 = pnorm(x2, sd = 1/sqrt(entiende_quanTA1_b)),
+                           check_q = q1 == q2, 
+                           f3 = dnorm(x2),
+                           q3 = pnorm(x2))
+```
+
+
+```{r reg-swap-fig}
+#| label: fig-reg-swap
+#| fig-cap: Illustration of regular swaps under PT. 
+#| fig-pos: h
+#| fig-width: 5.5
+#| fig-height: 2.25
+
+slice(entiende_quanTA1,-seq(3,5)) |> 
+  ggplot() + 
+  stat_function(fun = dnorm, xlim = c(-7, 7), 
+                color = azul, n = 1001) + 
+  stat_function(fun = dnorm, xlim = c(-7, 7), args = list(sd = 1/sqrt(entiende_quanTA1_b)), 
+                color = naranja, n = 1001) + 
+  geom_point(aes(x2,f2), color = naranja, size = rel(2.5)) + 
+  geom_segment(aes(x=x2,xend=x2,y=f2,yend=f3), color = gris, 
+               arrow = arrow(length = unit(5,"pt"))) + 
+  labs(title = "Regular Swap", x = "x", y = "density")
+
+```
+
+If we have a much flatter normal at the hotter level we are going to most likely be attempting a swap at a low probability region under the target level, as in @fig-reg-swap. As we've said before, we are attempting to blindly jump off a cliff. Instead, we could try to jump "from one mountain to another" taking into account our current position *relative* to the "mountain peak", *i.e.* the mode; provided, of course, that we knew the mode location $\mu$, but we can grant ourselves that knowledge again for exposition sake. 
+
+Hence, before attempting the swap, we can deterministically transform our current position $x$ at the hotter level to the following one: 
+$$\tilde{x} := (x - \mu)\sqrt{\beta} + \mu,$$
+which would amount to *preserve the quantile* we are at when swapped to the colder level. This transformation is depicted on @fig-quanTA-swap and was introduced under the name of **quanTA** by @Tawn.Roberts19. 
+
+```{r quanTA-fig}
+#| label: fig-quanTA-swap
+#| fig-cap: Illustration of the quantile preserving transformation swap (QuanTA). Instead of regular swapping, effectively jumping straigth, we jump "towards the mountain" (left) which amounts to a deterministic transformation to the corresponding quantile value at the colder level (right). 
+
+entqTA_dens <- entiende_quanTA1 |>
+  ggplot() + 
+  stat_function(fun = dnorm, xlim = c(-7, 7), 
+                color = azul, n = 1001) + 
+  stat_function(fun = dnorm, xlim = c(-7, 7), args = list(sd = 1/sqrt(entiende_quanTA1_b)), 
+                color = naranja, n = 1001) + 
+  geom_segment(aes(x = x2, xend = x1, y = f2, yend = f1), color = gris) + 
+  geom_point(aes(x1,f1), color = azul, size = rel(1.5)) +
+  geom_point(aes(x2,f2), color = naranja, size = rel(1.5)) + 
+  labs(title = "QuanTA Proposal", x = "x", y = "density") + 
+  ylim(0, 0.5)
+
+entqTA_cdf <- entiende_quanTA1 |>
+  ggplot() + 
+  stat_function(fun = pnorm, xlim = c(-7, 7), color = azul) + 
+  stat_function(fun = pnorm, xlim = c(-7, 7), 
+                args = list(sd = 1/sqrt(entiende_quanTA1_b)), color = naranja) + 
+  geom_segment(aes(x = x1, xend = x2, y = q1, yend = q2), color = gris) + 
+  geom_point(aes(x1,q1), color = azul, size = rel(2.5)) + 
+  geom_point(aes(x2,q2), color = naranja, size = rel(2.5)) + 
+  labs(title = "Quantile Preservation", x = "x", y = "cdf")
+
+entqTA_dens + entqTA_cdf
+```
+
+More generally, the QuanTA transformation of state $x$ from a $\beta_i$ level to $\beta_j$ with respect to the mode point $\mu$ is the function: 
+$$T(x;\beta_i,\beta_j,\mu) = \left[\dfrac{\beta_i}{\beta_j}\right]^{1/2}(x-\mu) + \mu,$$
+whose inverse is the corresponding QuanTA transformation from $\beta_j$ to $\beta_i$ with respect to the same mode point. 
+
+If during a PT run we QuanTA-transform before exchanging we would need to use the following Green ratio that accounts for the deterministic transformation:
+$$G_r:=\dfrac{\pi\big(x_1, \dots,\; t_{k+1 \to k},\; t_{k \to k+1},\; \dots, x_K\big)}{\pi\big(x_1,\dots, x_{k}, x_{k+1},\dots,x_K\big)} \left|\dfrac{\partial\;t_{k+1 \to k}}{\partial x}\right|\left|\dfrac{\partial\;t_{k \to k + 1}}{\partial x}\right|,$$
+where we abusively simplify notation to $T(x_{i};\beta_i,\beta_j,\mu) := t_{i \to j}$. Under this current unimodal normal setting, this ratio becomes exactly 1 because we are again only left with the $k$-th and $k+1$-th components of the product-form density so that
+$$G_r = \left[\dfrac{\pi_X(t_{k+1 \to k})}{\pi_X(x_{k})}\right]^{\beta_k}\left[\dfrac{\pi_X(t_{k \to k+1})}{\pi_X(x_{k+1})}\right]^{\beta_{k+1}}\left|\dfrac{\partial\;t_{i \to j}}{\partial x_i}\right|\left|\dfrac{\partial\;t_{i \to j}}{\partial x_i}\right|$$
+and these terms conveniently cancel out precisely because of the quantile preservation property:
+$$\begin{split}
+\Phi(x_i|\mu,\sigma^2/\beta_i) &= \Phi(t_{i \to j}| \mu, \sigma^2/\beta_j) \\
+&\Longrightarrow \phi(x_i|\mu,\sigma^2/\beta_i) = \phi(t_{i \to j}| \mu, \sigma^2/\beta_j) \dfrac{\partial\;t_{i \to j}}{\partial x_i} \\
+&\Longrightarrow \left[\pi_X(x_i)\right]^{\beta_i} = \left[\pi_X(t_{i \to j})\right]^{\beta_j} \dfrac{\partial\;t_{i \to j}}{\partial x_i}\\
+&\Longrightarrow \dfrac{\left[\pi_X(t_{i \to j})\right]^{\beta_j}}{\left[\pi_X(x_i)\right]^{\beta_i}}\left|\dfrac{\partial\;t_{i \to j}}{\partial x_i}\right| = 1.
+\end{split}$$
+
+We always accept; regardless of the spread between $\beta_i$ and $\beta_j$. This would be great since we could do with only two levels and communicate perfectly between them. However, we wouldn't be doing PT on any unimodal normal setting.
+
+What do we do when there is multimodality? Just like before, we transform a state to the corresponding relative position given *a* mode location. So first we have to decide at which mode we are located. We need a *mode assignment* function at each of the $k$ temperature levels
+$$m_k: \mathcal{X} \to \lbrace \mu_1,\mu_2\dots,\mu_M\rbrace$$ 
+where $M$ is the number of modes of $\pi_X$. After assigning a mode, we are prepared to QuanTA-transform via 
+$$t_{k \to k+1} = T(x ; \beta_k, \beta_{k+1}, m_k(x)).$$
+However, in the multimodal setting, the transformation can lead the state to "switch modes"; there may be some states for which 
+$$m_k(x) \neq m_{k+1}\left(\,t_{k \to k+1}\,\right),$$
+as shown on the first panel of @fig-quanTA-multimode. And although at first sight that could sound like a good thing, it is nonetheless problematic because the transformation is no longer bijective; said otherwise, we would not return to the purple states on the picture were we to apply twice the transformation:
+$$x \neq T\big(\,t_{k \to k+1} \,; \beta_{k+1}, \beta_k, m_{k+1}(t_{k \to k+1}) \big),$$
+as is apparent by the "void" left on the second panel of @fig-quanTA-multimode. 
+
+```{r quanTA-multimode}
+entiende_quanTA_info <- tempeRing:::get_HAT_info(
+  mode_guess = c(-20,20), 
+  l_target = tempeRing:::ulmix_norm_temp,
+  w = c(0.5,0.5), mean = c(-20,20), sd = c(3, 3), 
+  optimize = FALSE)
+
+entiende_quanTA2_x <- seq(-35,35, length.out = 51)
+entiende_quanTA2_b <- 0.15
+z_b <- integrate(
+  lower = -Inf, upper = Inf, 
+  function(x) 
+    tempeRing:::ulmix_norm_temp(x,entiende_quanTA2_b,
+                                w = c(0.5,0.5), mean = c(-20,20), sd = c(3, 3)) |>
+    exp())$value
+
+entiende_quanTA2 <- tibble(
+  x1 = entiende_quanTA2_x, 
+  f1 = tempeRing::ulmix_norm_temp(x1, w = c(0.5,0.5), mean = c(-20,20), sd = c(3, 3)),
+  m1 = map(x1, tempeRing:::modAssignment, beta = 1, HAT_info = entiende_quanTA_info) |> 
+    map_dbl(~ entiende_quanTA_info$modes[.x$"A"]), 
+  x2 = map2_dbl(x1, m1, 
+                function(x,m) tempeRing:::quanta_transformation(x, 1, entiende_quanTA2_b, m)),
+  f2 = tempeRing::ulmix_norm_temp(x2, beta = entiende_quanTA2_b, 
+                                  w = c(0.5,0.5), mean = c(-20,20), sd = c(3, 3)),
+  m2 = map(x2, tempeRing:::modAssignment, beta = entiende_quanTA2_b, 
+           HAT_info = entiende_quanTA_info) |> 
+    map_dbl(~ entiende_quanTA_info$modes[.x$"A"]),
+  x3 = map2_dbl(x2, m2, 
+                function(x,m) tempeRing:::quanta_transformation(x, entiende_quanTA2_b, 1, m)),
+  f3 = tempeRing::ulmix_norm_temp(x3, beta = 1, 
+                                  w = c(0.5,0.5), mean = c(-20,20), sd = c(3, 3)),
+  m3 = map(x3, tempeRing:::modAssignment, beta = 1, HAT_info = entiende_quanTA_info) |> 
+    map_dbl(~ entiende_quanTA_info$modes[.x$"A"]),
+  m_type = ifelse(m1 == m2, 
+                  ifelse(m1 < 0, "Low Mode", "High Mode"), 
+                  "Switches Modes") |>
+    ordered(levels = c("Low Mode","Switches Modes","High Mode")), 
+  m_type_rev = ifelse(m2 == m3, 
+                      ifelse(m2 < 0, "Low Mode", "High Mode"), 
+                      "Switches Modes") |>
+    ordered(levels = c("Low Mode","Switches Modes","High Mode")),
+  x4 = entiende_quanTA2_x,
+  f4 = tempeRing::ulmix_norm_temp(x4, beta = entiende_quanTA2_b, 
+                                  w = c(0.5,0.5), mean = c(-20,20), sd = c(3, 3)),
+  f4t1 = tempeRing::ulmix_norm_temp(x4, w = c(0.5,0.5), mean = c(-20,20), sd = c(3, 3)),
+  f1t4 = tempeRing::ulmix_norm_temp(x1, beta = entiende_quanTA2_b, 
+                                    w = c(0.5,0.5), mean = c(-20,20), sd = c(3, 3)))
+```
+
+```{r quanTA-multimode-fig}
+#| label: fig-quanTA-multimode
+#| fig-cap: QuanTA transformation in a multimodal setting. 
+#| fig-width: 5
+#| fig-height: 4
+
+entiende_quanTA2_c2h <- entiende_quanTA2 |>
+  ggplot() + 
+  stat_function(fun = function(x) 
+    exp(tempeRing::ulmix_norm_temp(x, w = c(0.5,0.5), mean = c(-20,20), sd = c(3, 3))) + 0.05,
+    color = gris, n = 1001) + 
+  stat_function(fun = function(x) 
+    exp(tempeRing::ulmix_norm_temp(x, beta = entiende_quanTA2_b, 
+                                   w = c(0.5,0.5), mean = c(-20,20), sd = c(3, 3)))/z_b,
+    color = gris, n = 1001) + 
+  geom_segment(aes(x = x1, xend = x2, y = exp(f1) + 0.05, yend = exp(f2)/z_b, color = m_type),
+               arrow = arrow(length = unit(5, "pt"))) +
+  geom_point(aes(x1,exp(f1) + 0.05, color = m_type)) +
+  scale_color_manual(values = c("Low Mode" = aqua,
+                                "Switches Modes" = morado,
+                                "High Mode" = naranja)) +
+  labs(x = "X", title = "From cold (top) to hot (bottom)", color = "State type") + 
+  xlim(-61,61) + 
+  theme(axis.line.y = element_blank(), 
+        axis.title.y = element_blank(), 
+        axis.text.y = element_blank(), 
+        axis.ticks.y = element_blank(), 
+        legend.position = "top")
+
+entiende_quanTA2_h2c <- entiende_quanTA2 |>
+  ggplot() + 
+  stat_function(fun = function(x) 
+    exp(tempeRing::ulmix_norm_temp(x, w = c(0.5,0.5), mean = c(-20,20), sd = c(3, 3))) + 0.05,
+    color = gris, n = 1001) + 
+  stat_function(fun = function(x) 
+    exp(tempeRing::ulmix_norm_temp(x, beta = entiende_quanTA2_b, 
+                                   w = c(0.5,0.5), mean = c(-20,20), sd = c(3, 3)))/z_b,
+    color = gris, n = 1001) + 
+  geom_segment(aes(x = x2, xend = x3, y = exp(f2)/z_b, yend = exp(f3) + 0.05, color = m_type_rev),
+               arrow = arrow(length = unit(5, "pt"))) +
+  geom_point(aes(x2,exp(f2)/z_b, color = m_type_rev)) +
+  scale_color_manual(values = c("Low Mode" = aqua,
+                                "Switches Modes" = morado,
+                                "High Mode" = naranja)) +
+  labs(x = "X", title = "From hot (bottom) to cold (top)") + 
+  xlim(-61,61) + 
+  theme(axis.line.y = element_blank(), 
+        axis.title.y = element_blank(), 
+        axis.text.y = element_blank(), 
+        axis.ticks.y = element_blank(), 
+        legend.position = "none")
+
+(entiende_quanTA2_c2h / entiende_quanTA2_h2c) + 
+  plot_annotation(title = "QuanTA transformation")
+
+```
+
+We are then only free to swap after QuanTA-transforming when the transformation remains associated with the same mode. If we define the sets 
+$$A_{i\to j} := \left\lbrace x\in\mathcal{X} \;:\; m_i(x) = m_j(t_{i\to j})  \right\rbrace$$
+the acceptance probability for a QuanTA swap is 
+$$\min\left\lbrace 1, \left[\dfrac{\pi_X(t_{k+1 \to k})}{\pi_X(x_{k})}\right]^{\beta_k}\left[\dfrac{\pi_X(t_{k \to k+1})}{\pi_X(x_{k+1})}\right]^{\beta_{k+1}}1_{\small A_{k\to k+1}}(x_k) 1_{\small A_{k+1\to k}}(x_{k+1})\right\rbrace.$$
+This is no longer always equal to 1, but if the modal regions are approximately normal it should still increase the acceptance probability enabling a more agressive spacing of the temperature levels, as shown in the aforementioned original paper [@Tawn.Roberts19]. 
+
+Of course, there is no free lunch and constructing good mode-assignment functions is crucial to the efficiency of the algorithm. A discussion and proposals on this topic are also given on the paper. We reproduce QuanTA swapping on one of the challenging examples shown there. We do so under the ideal circumstance in which we already have a good modal assignment, again for illustration purposes only. 
+
+The target is a 20-dimensional mixture of 3 equally weighted multivariate independent Gaussians centered at $\mu_1 = (-20,\dots,-20)$, $\mu_2=(0,\dots,0)$, and $\mu_3=(20,\dots,20)$, all with common standard deviation $\sigma=0.01$. Hence, 
+$$\pi_X(x_1,\dots,x_{20}) \propto \sum\limits_{m=1}^3\prod\limits_{i=1}^{20}\phi(x_i|\mu_i,\sigma )$$
+The very small scale of the modes means that regular PT with direct swapping would need a large amount of temperature levels to bridge the difference between the highly concentrated modes at the target level with a free-ranging temperature. On the other hand, QuanTA swapping allows for a very reduced schedule of only 4 levels, $\Delta=\left\lbrace 1, 0.002, 0.002^2, 0.002^3\right\rbrace$. Such a reduced schedule effectively prevents any direct swapping, as seen on @fig-quanTA-ex, so that it behaves like regular RWM and is only able to observe one mode, assigning it all the weight (top-right). QuanTA swapping, aided by the knowledge of the mode positions, is able to transfer information between levels and we see that estimated weights^[These weights are estimated by the proportion of samples that are closest in Mahalanobis distance to each of the 3 modes.] converge to the true equidistribution. 
+
+```{r quanTA-ex-prep}
+#| results: false
+
+search_mode3 <- tempeRing:::rwm_sampler_chain(
+  tempeRing:::ulmix_mvtnorm_temp, beta = 0.002^3, 
+  w = c(1/3,1/3,1/3), 
+  mu = list(rep(-20,20),rep(0,20),rep(20,20)),
+  scale = diag(4e7,20), S = 10000, burn = 5000, x_0_u = 30)
+plan(multisession, workers = 10)
+search_mode2 <- future_map(sample.int(5000,10), function(m){
+  tempeRing:::rwm_sampler_chain(
+    tempeRing:::ulmix_mvtnorm_temp, beta = 0.002^2, 
+    w = c(1/3,1/3,1/3), 
+    mu = list(rep(-20,20),rep(0,20),rep(20,20)),
+    scale = diag(5e4,20), S = 50001, burn = 5000, 
+    x_0 = search_mode3$x[m,])$x[1,]
+},.options = furrr_options(seed = TRUE))
+search_mode1 <- future_map(search_mode2, function(m){
+  tempeRing:::rwm_sampler_chain(
+    tempeRing:::ulmix_mvtnorm_temp, beta = 0.002, 
+    w = c(1/3,1/3,1/3), 
+    mu = list(rep(-20,20),rep(0,20),rep(20,20)),
+    scale = diag(150,20), S = 50001, burn = 5000, 
+    x_0 = m)$x[1,]
+},.options = furrr_options(seed = TRUE))
+search_mode0 <- future_map(search_mode1, function(m){
+  tempeRing:::rwm_sampler_chain(
+    tempeRing:::ulmix_mvtnorm_temp, beta = 1, 
+    w = c(1/3,1/3,1/3), 
+    mu = list(rep(-20,20),rep(0,20),rep(20,20)),
+    scale = diag(0.05,20), S = 50001, burn = 5000, 
+    x_0 = m)$x[1,]
+},.options = furrr_options(seed = TRUE))
+
+modeInfo <- tempeRing:::get_HAT_info(
+  search_mode0[7:9], 
+  tempeRing:::ulmix_mvtnorm_temp, 
+  w = c(1/3,1/3,1/3), mu = list(rep(-20,20),rep(0,20),rep(20,20)), 
+  shared_args = list(sigma = diag(0.01, 20)), optimize = TRUE, 
+  control_optim = list(fnscale = -1, maxit = 60000, temp = 1), 
+  method = "SANN")
+
+x0 <- c(as.vector(tempeRing:::rmvtnorm_temp(1,mu = rep(-20,20), sigma = diag(0.003,20))),
+        as.vector(tempeRing:::rmvtnorm_temp(1,mu = rep(-20,20), sigma = diag(1.5,20))),
+        as.vector(tempeRing:::rmvtnorm_temp(1,mu = rep(-20,20), sigma = diag(750,20))),
+        as.vector(tempeRing:::rmvtnorm_temp(1,mu = rep(-20,20), sigma = diag(375000,20)))) |> 
+  matrix(ncol = 20, byrow = TRUE)
+```
+
+```{r quanTA-ex-pt}
+#| results: false
+
+cycles <- 5000
+temp_moves <- 1
+within_moves <- 5
+
+quanTA_ex_pt <- tempeRing:::PT_rwm_chain(
+  swap_type = "naive", 
+  l_target = tempeRing:::ulmix_mvtnorm_temp, 
+  w = c(1/3,1/3,1/3), mu = list(rep(-20,20),rep(0,20),rep(20,20)), 
+  shared_args = list(sigma = diag(0.01, 20)),
+  beta_schedule = 0.002^(0:3),
+  x_0 = x0, burn_cycles = -1,
+  scale = list(diag(0.003,20), diag(1.5, 20), diag(750, 20), diag(375000, 20)),
+  Cycles = cycles + 1, Temp_Moves = temp_moves, Within_Moves = within_moves)
+
+quanTA_ex <- tempeRing:::PT_rwm_chain(
+  swap_type = "naive", 
+  quanta = TRUE, mode_info = modeInfo,
+  l_target = tempeRing:::ulmix_mvtnorm_temp, 
+  w = c(1/3,1/3,1/3), mu = list(rep(-20,20),rep(0,20),rep(20,20)), 
+  shared_args = list(sigma = diag(0.01, 20)),
+  beta_schedule = 0.002^(0:3),
+  x_0 = x0, burn_cycles = -1,
+  scale = list(diag(0.003,20), diag(1.5, 20), diag(750, 20), diag(375000, 20)),
+  Cycles = cycles + 1, Temp_Moves = temp_moves, Within_Moves = within_moves)
+
+```
+
+```{r quanTA-ex-figs}
+#| label: fig-quanTA-ex
+#| fig-cap: Comparison between an ideal setting for QuanTA (bottom) swapping and regular PT with direct swapping (top). The barcode plots (left) trace the position of the first dimension of a 20-dimensional mixture of 3 very narrow, equally weighted, multivariate Gaussians. The right-hand side plots show the ergodic estimates of the estimated weights of each mode.
+
+cycle_length <- temp_moves + within_moves
+d <- dim(quanTA_ex_pt$x)[3]
+x <- matrix(nrow = cycles*cycle_length, ncol = d)
+for(c in 1:cycles){
+  i <- (c-1)*cycle_length
+  x[i + 1:temp_moves, ] <- vapply(1:temp_moves, function(j){
+    quanTA_ex_pt$x[i + j, which(quanTA_ex_pt$k_indexes[c, j, ] == 1), ]
+  }, numeric(d)) |> t()
+  is <- i + (temp_moves + 1):cycle_length
+  x[is, ] <- quanTA_ex_pt$x[is, which(quanTA_ex_pt$k_indexes[c, temp_moves+1, ] == 1), ]
+}
+
+barcode_pt <- tibble(data.frame(x)) |> 
+  mutate(S = row_number()) |> 
+  ggplot(aes(x=S,y=X1)) + 
+  geom_path(color = azul) + 
+  labs(title = "Direct swapping") + 
+  ylim(-25,25)
+
+m1 <- apply(x, 1, function(x) mahalanobis(x, rep(-20, 20), diag(0.01,20)))
+m2 <- apply(x, 1, function(x) mahalanobis(x, rep(0, 20), diag(0.01,20)))
+m3 <- apply(x, 1, function(x) mahalanobis(x, rep(20, 20), diag(0.01,20)))
+weight_estim_pt <- tibble(
+  S = seq_along(m1), 
+  w1 = m1 <= m2 & m1 <= m3, 
+  w2 = m2 <= m1 & m2 <= m3,
+  w3 = m3 <= m1 & m3 <= m2,
+  m1 = cummean(w1),
+  m2 = cummean(w2),
+  m3 = cummean(w3)) |> 
+  select(S,m1,m2,m3) |> 
+  gather(Mode,Weight,-S) |> 
+  ggplot(aes(x=S,y=Weight, color = Mode)) + 
+  geom_path() + 
+  geom_hline(yintercept = 1/3, color = naranja) + 
+  scale_color_manual(values = c(aqua,morado,rosa)) + 
+  ylim(0,1)
+
+d <- dim(quanTA_ex$x)[3]
+x <- matrix(nrow = cycles*cycle_length, ncol = d)
+for(c in 1:cycles){
+  i <- (c-1)*cycle_length
+  x[i + 1:temp_moves, ] <- vapply(1:temp_moves, function(j){
+    quanTA_ex$x[i + j, which(quanTA_ex$k_indexes[c, j, ] == 1), ]
+  }, numeric(d)) |> t()
+  is <- i + (temp_moves + 1):cycle_length
+  x[is, ] <- quanTA_ex$x[is, which(quanTA_ex$k_indexes[c, temp_moves+1, ] == 1), ]
+}
+
+barcode <- tibble(data.frame(x)) |> 
+  mutate(S = row_number()) |> 
+  ggplot(aes(x=S,y=X1)) + 
+  geom_path(color = azul) + 
+  labs(title = "QuanTA swapping")
+
+m1 <- apply(x, 1, function(x) mahalanobis(x, rep(-20, 20), diag(0.01,20)))
+m2 <- apply(x, 1, function(x) mahalanobis(x, rep(0, 20), diag(0.01,20)))
+m3 <- apply(x, 1, function(x) mahalanobis(x, rep(20, 20), diag(0.01,20)))
+weight_estim <- tibble(
+  S = seq_along(m1), 
+  w1 = m1 <= m2 & m1 <= m3, 
+  w2 = m2 <= m1 & m2 <= m3,
+  w3 = m3 <= m1 & m3 <= m2,
+  m1 = cummean(w1),
+  m2 = cummean(w2),
+  m3 = cummean(w3)) |> 
+  select(S,m1,m2,m3) |> 
+  gather(Mode,Weight,-S) |> 
+  ggplot(aes(x=S,y=Weight, color = Mode)) + 
+  geom_path() + 
+  geom_hline(yintercept = 1/3, color = naranja) + 
+  scale_color_manual(values = c(aqua,morado,rosa)) + 
+  ylim(0,1)
+
+(barcode_pt + weight_estim_pt) /
+  (barcode + weight_estim)
+
+```
+
+## Weight Degeneracy
+
+Another challenge of tempering is the problem of *weight degeneracy*. So far, all the toy mixture examples presented have had equal mixture weights. This is not true in general for problems of real interest. Different modes would have different scales and/or mixture weights, which both amount to them having different regional weighting. For example, consider the following mixture of normals:
+$$\pi_X(x) = 0.8 \phi(x | \mu = -40, \sigma = 1) + 0.2 \phi(x | \mu = 40, \sigma = 3).$$
+While at the target level the negative mode concentrates most of the mass, this is inverted at very hot levels, as seen on @fig-weight-mixnorm. While looking "from above" the hotter densities become flatter, when "zooming" in we notice that the lower-weighted-but-wider mode basically now gathers all the mass and the originally higher-weighted-but-narrow mode becomes a little bump. 
+
+```{r weight-mixnorm}
+#| label: fig-weight-mixnorm
+#| fig-cap: When (power) tempering, regional weights are not preserved.
+#| fig-width: 4.75
+#| fig-height: 2.25
+
+z_b <- tibble(
+  beta = 0.5^c(0,1,seq(2,8,by=2)),
+  z_b = map_dbl(
+    beta, 
+    function(beta) 
+      integrate(function(x, b) 
+        tempeRing::ulmix_norm_temp(x ,b, w = c(0.8,0.2), mean = c(-20,20), sd = c(1, 3)) |> 
+          exp(),
+        lower = -Inf, upper = Inf, b = beta)$value))
+
+tibble(x = rep(seq(-100,100,length.out = 2001),6),
+       beta = rep(0.5^c(0,1,seq(2,8,by=2)), each = 2001),
+       lxb = tempeRing::ulmix_norm_temp(x, beta, w = c(0.8,0.2), mean = c(-20,20), sd = c(1, 3)),
+       upi = exp(lxb)) |> 
+  left_join(z_b, by = "beta") |> 
+  mutate(density = upi/z_b,
+         beta = ordered(beta, levels = 0.5^c(0,1,seq(2,8,by=2)), 
+                        labels = c(1, 0.5, paste(0.5, c(2,4,6,8),sep="^")))) |> 
+  ggplot(aes(x=x,y=density, group=beta, color=beta)) + 
+  facet_wrap(~beta, scales = "free_y") +
+  geom_path() + 
+  scale_color_manual(values = colores_ord) + 
+  labs(title = "Tempering doesn't preserve regional weights")
+
+
+```
+
+This also prevents us from choosing agressive temperatuere schedules since we would once again find ourselves too often attempting a swap with too much "loss in energy" as the hotter chains will spend most of their times in the "less important" modal regions of the target level. 
+
+Just like QuanTA, having a good estimation of the location of the modes can helps us overcome this challenge. @Tawn.etal20 recently proposed a *weight-preserving* version of tempering that combines regular power tempering with modal information to construct a different density at each temperature level.
+
+First, assume we have a collection of $M$ mode points $\mathcal{M}=\lbrace\mu_1,\mu_2,\dots,\mu_M\rbrace$. Also supose we can construct the *Laplace* approximation of the density at each of them; that is, we can obtain the collection of covariance matrixes corresponding to the log-density's Hessians at said mode points: 
+$$\mathcal{S}=\lbrace\Sigma_1,\Sigma_2,\dots,\Sigma_M\rbrace \quad\text{where}\quad \Sigma_m = -\Big(\nabla^2\log\big[\pi_X(x)\big]\Big)^{-1}.$$
+We may estimate the modal weights as
+$$\hat{w}_m = \dfrac{\pi_X(\mu_m)|\Sigma_m|^{1/2}}{\sum\limits_{ñ=1}^{M}\pi_X(\mu_ñ)|\Sigma_ñ|^{1/2}}$$
+
+Armed with these three collections $\mathcal{M}$, $\mathcal{S}$ and $\mathcal{W}=\lbrace\hat{w}_1,\hat{w}_2,\dots,\hat{w}_M\rbrace$, we can define a mode-assignment function at each of $K$ temperature levels:
+$$m(x; \beta_k) = \underset{m}{\arg\max}\left\lbrace \hat{w}_m \; \phi_d\left(x\,\Big|\,\mu_m,\; \beta_k^{-1}\Sigma_m\right) \right\rbrace.$$
+
+Finally, @Tawn.etal20 introduce the *Hessian Adjusted Tempered* or **HAT** density:$$\pi_{\mathcal{H}}(x|\beta_k) \propto  
+\begin{cases}
+\big[\pi_X(x)\big]^\beta \big[\pi_X(\mu_{m(x;\beta_k)})\big]^{1-\beta} & \quad\text{when}\quad m(x;\beta_k) = m(x;\beta_1=1)\\[1em]
+G(x, \beta_k) & \quad\text{otherwise}
+\end{cases}
+$$ where they offer two expressions for $G$, one canonical to a Gaussian mixture and one deemed robust:
+- Canonical^[We use the constant $\tau \equiv 2\pi$, not to inflame any [Tau vs Pi debate](https://tauday.com/tau-manifesto) but as a notational convenience to avoid confusion with the density.]$$G(x, \beta) = \left(\dfrac{\tau^d\;\Sigma_{m(x;\beta_k)}}{\beta^d}\right)^{1/2} \pi_X(\mu_{m(x;\beta_k)})\phi_d\left(x\,\Big|\,\mu_{m(x;\beta_k)},\; \beta^{-1}\Sigma_{\mu_{m(x;\beta_k)}}\right)$$
+- Robust:$$G(x, \beta) = \pi_X(x) + \left[\dfrac{P(x,\beta)-P(x,1)}{P(x,\beta)+P(x,1)}\right]\Big(\big[\pi_X(x)\big]^\beta\big[\pi_X(\mu_{m(x;\beta)})\big]^{1-\beta}-\pi_X(x)\Big),$$
+where $P(x,\beta)=\hat{w}_{\mu_{m(x;\beta)}} \; \phi_d\left(x\,\Big|\,\mu_{m(x;\beta)},\; \beta^{-1}\Sigma_{\mu_{m(x;\beta)}}\right)$.
+
+Notice that this density, just like with regular tempering, reduces to the original target at the cold level $\beta_1 = 1$, so that any PT scheme ran upon it would still be valid.
+
+```{r hat-fig}
+#| label: fig-hat
+#| fig-cap: Illustration of HAT densities for an imbalanced normal mixture. Reference unnormalized tempered densities in dashed gray.
+#| fig-width: 4.75
+#| fig-height: 2.25
+
+HAT_info <- tempeRing:::get_HAT_info(c(-20,20),tempeRing:::ulmix_norm_temp,
+                                     w = c(0.8,0.2), mean = c(-20,20), sd = c(1, 3), 
+                                     optimize = FALSE)
+
+tibble(x = rep(seq(-100,100,length.out = 1001),6),
+       beta = rep(0.5^c(0,1,seq(3,9,by=2)), each = 1001),
+       lxb = tempeRing::ulmix_norm_temp(x, beta, w = c(0.8,0.2), mean = c(-20,20), sd = c(1, 3)),
+       upi = exp(lxb),
+       HAT = map2_dbl(x,beta,function(x,b) 
+         tempeRing:::lHAT_target(x, b, HAT_info = HAT_info,
+                                 ltemp_target = tempeRing::ulmix_norm_temp, 
+                                 w = c(0.8,0.2), mean = c(-20,20), sd = c(1, 3),
+                                 silent = TRUE)) |> 
+         exp()) |> 
+  left_join(z_b, by = "beta") |> 
+  mutate(density = upi/z_b,
+         beta = ordered(beta, levels = 0.5^c(0,1,seq(3,9,by=2)), 
+                        labels = c(1, 0.5, paste(0.5, seq(3,9,by=2),sep="^")))) |> 
+  ggplot(aes(x=x,y=HAT, group=beta, color=beta)) + 
+  facet_wrap(~beta, scales = "free_y") +
+  geom_path() + 
+  geom_path(aes(y=upi), color = gris, linetype = 2, size = rel(0.5)) + 
+  scale_color_manual(values = colores_ord) + 
+  labs(title = "HAT unnormalized densities")
+
+
+```
+
+As in the previous section, we reproduce one of the original papers examples. In this case we would be targetting a 5-dimensional mixture of 4-components. The components are mixed in equal proportions but are independent skewed normals with different scales, hence they have very different regional weights. The target density has the following expression: 
+$$\pi_X(x_1,\dots,x_5) \propto \sum\limits_{m=1}^4\prod\limits_{i=1}^5\dfrac{2}{\sigma_m}\phi\left(\dfrac{x_i-\mu_m}{\sigma_m}\right)\Phi\left(\dfrac{\alpha_m(x_i-\mu_m)}{\sigma_m}\right),$$
+where $\alpha_m=\alpha=2$ is the skewness parameter, equal in all components; $\mu_1 = -45$, $\mu_2 = -15$, $\mu_3 = 15$, $\mu_4 = 45$, are the location parameters; and $\sigma_1 = 3$, $\sigma_2 = 1$, $\sigma_3 = 1$, $\sigma_4 = 3$ are the scales. 
+
+To get a sense of the problem and how the skewness affects weights, on @fig-hatskew-2d we plot a 2-dimensional version of it, but we must remember that the real target is 5-dimensional. The first mode expands and starts engulfing the higher but narrower mode. Hence, we can see how even though the mixing proportions are the same, both skewness and difference in scale affect weighting. 
+
+```{r hatskew2d}
+#| label: fig-hatskew-2d
+#| fig-cap: A two dimensional mixture of skew normals. As temperature increases the shorter but wider modes at the extremes begin engulfing the higher but narrower intermediate peaks. 
+
+cold_2dhatskewnorm <- tidyr::expand_grid(
+  x1 = seq(-60,80,by=0.5),
+  x2 = seq(-60,80,by=0.5)
+) |>
+  dplyr::mutate(
+    f = purrr::map2_dbl(
+      x1,
+      x2,
+      ~tempeRing:::ulmix_hatskewnorm_temp(c(.x,.y), mu=c(-45,-15,15,45), sigma = c(3,1,1,3)) |> 
+        exp()),
+    beta = "1"
+  ) |> 
+  ggplot() + 
+  geom_vline(xintercept = 0, color = gris) + 
+  geom_hline(yintercept = 0, color = gris) +
+  geom_contour(aes(x1,x2,z=f), 
+               color = aqua, bins = 50, size = rel(0.1)) +
+  theme_minimal() + 
+  theme(panel.grid = element_blank())
+
+tibia_2dhatskewnorm <- tidyr::expand_grid(
+  x1 = seq(-60,80,by=0.5),
+  x2 = seq(-60,80,by=0.5)
+) |>
+  dplyr::mutate(
+    f = purrr::map2_dbl(
+      x1,
+      x2,
+      ~tempeRing:::ulmix_hatskewnorm_temp(c(.x,.y), beta = 0.31^2, 
+                                          mu=c(-45,-15,15,45), sigma = c(3,1,1,3)) |> 
+        exp()),
+    beta = "0.31^2"
+  ) |> 
+  ggplot() + 
+  geom_vline(xintercept = 0, color = gris) + 
+  geom_hline(yintercept = 0, color = gris) +
+  geom_contour(aes(x1,x2,z=f), 
+               color = morado, bins = 50, size = rel(0.1)) +
+  theme_minimal() + 
+  theme(panel.grid = element_blank())
+
+tibia2_2dhatskewnorm <- tidyr::expand_grid(
+  x1 = seq(-60,80,by=0.5),
+  x2 = seq(-60,80,by=0.5)
+) |>
+  dplyr::mutate(
+    f = purrr::map2_dbl(
+      x1,
+      x2,
+      ~tempeRing:::ulmix_hatskewnorm_temp(c(.x,.y), beta = 0.31^4, 
+                                          mu=c(-45,-15,15,45), sigma = c(3,1,1,3)) |> 
+        exp()),
+    beta = "0.31^2"
+  ) |> 
+  ggplot() + 
+  geom_vline(xintercept = 0, color = gris) + 
+  geom_hline(yintercept = 0, color = gris) +
+  geom_contour(aes(x1,x2,z=f), 
+               color = rosa, bins = 50, size = rel(0.1)) +
+  theme_minimal() + 
+  theme(panel.grid = element_blank())
+
+hot_2dhatskewnorm <- tidyr::expand_grid(
+  x1 = seq(-60,80,by=0.5),
+  x2 = seq(-60,80,by=0.5)
+) |>
+  dplyr::mutate(
+    f = purrr::map2_dbl(
+      x1,
+      x2,
+      ~tempeRing:::ulmix_hatskewnorm_temp(c(.x,.y), beta = 0.31^6, 
+                                          mu=c(-45,-15,15,45), sigma = c(3,1,1,3)) |> 
+        exp()),
+    beta = "0.31^2"
+  ) |> 
+  ggplot() + 
+  geom_vline(xintercept = 0, color = gris) + 
+  geom_hline(yintercept = 0, color = gris) +
+  geom_contour(aes(x1,x2,z=f), 
+               color = naranja, bins = 50, size = rel(0.1)) +
+  theme_minimal() + 
+  theme(panel.grid = element_blank())
+
+
+(cold_2dhatskewnorm + tibia_2dhatskewnorm) / 
+  (tibia2_2dhatskewnorm + hot_2dhatskewnorm)
+
+```
+
+We now procede to run PT on the original powered tempering sense and targetting the new HAT density. The temperature schedule is given by $\Delta=\lbrace 1, 0.31, 0.31^2, \dots, 0.31^7 \rbrace$ and we again attempt a swap and give 5 RWM exploration moves per cycle. 
+
+```{r}
+#| results: false
+
+cycles <- 50000
+temp_moves <- 1
+within_moves <- 5
+
+prueba_skew_pt <- tempeRing:::PT_rwm_chain(
+  l_target = tempeRing:::ulmix_hatskewnorm_temp,
+  mu=c(-45,-15,15,45), sigma = c(3, 1,1, 3), 
+  swap_type = "naive",
+  beta_schedule = 0.31^(0:7),
+  scale = list(diag(0.75,5),diag(20,5),diag(60,5),diag(225,5),
+               diag(750,5),diag(2500,5),diag(8500,5),diag(27500,5)),
+  Cycles = cycles + 1, Temp_Moves = temp_moves, Within_Moves = within_moves, 
+  silent = TRUE)
+
+
+skewhat_info <- tempeRing:::get_HAT_info(
+  mode_guess = list(rep(-45, 5),rep(-15, 5),rep(15, 5),rep(45, 5)), 
+  tempeRing:::ulmix_hatskewnorm_temp, 
+  mu=c(-45,-15,15,45), sigma = c(3, 1,1, 3), optimize = FALSE)
+
+prueba_skew_hat <- tempeRing:::HAT_rwm_chain(
+  ltemp_target = tempeRing:::ulmix_hatskewnorm_temp, 
+  HAT_info = skewhat_info,
+  mu=c(-45,-15,15,45), sigma = c(3, 1,1, 3), 
+  swap_type = "naive",
+  beta_schedule = 0.31^(0:7),
+  scale = list(diag(0.75,5),diag(20,5),diag(60,5),diag(225,5),
+               diag(750,5),diag(2500,5),diag(8500,5),diag(27500,5)),
+  Cycles = cycles + 1, Temp_Moves = temp_moves, Within_Moves = within_moves, silent = TRUE)
+
+```
+
+```{r}
+d <- dim(prueba_skew_pt$x)[3]
+x <- matrix(nrow = cycles*cycle_length, ncol = d)
+for(c in 1:cycles){
+  i <- (c-1)*cycle_length
+  x[i + 1:temp_moves, ] <- vapply(1:temp_moves, function(j){
+    prueba_skew_pt$x[i + j, which(prueba_skew_pt$k_indexes[c, j, ] == 1), ]
+  }, numeric(d)) |> t()
+  is <- i + (temp_moves + 1):cycle_length
+  x[is, ] <- prueba_skew_pt$x[is, which(prueba_skew_pt$k_indexes[c, temp_moves+1, ] == 1), ]
+}
+
+prueba_skew_pt_x <- data.frame(x) |> tibble() |> 
+  mutate(s = row_number()) |> 
+  filter(s >= 1000) |> 
+  mutate(s = row_number(), 
+         M1 = -30 <= X1 & X1 <= 0,
+         weight = dplyr::cummean(M1)) 
+
+skew_pt_barcode <- prueba_skew_pt_x |> 
+  ggplot(aes(x=s,y=X1)) + 
+  geom_path(color = aqua) + 
+  labs(title = "Barcode", y = "Power Tempering \n X1")
+
+skew_pt_weights <- prueba_skew_pt_x |>
+  ggplot(aes(x=s,y=weight)) + 
+  geom_hline(yintercept = 0.25, color = naranja) + 
+  geom_path(color = aqua)  + 
+  labs(title = "Est. weight of second mode") 
+
+
+```
+
+```{r}
+d <- dim(prueba_skew_hat$x)[3]
+x <- matrix(nrow = cycles*cycle_length, ncol = d)
+for(c in 1:cycles){
+  i <- (c-1)*cycle_length
+  x[i + 1:temp_moves, ] <- vapply(1:temp_moves, function(j){
+    prueba_skew_hat$x[i + j, which(prueba_skew_hat$k_indexes[c, j, ] == 1), ]
+  }, numeric(d)) |> t()
+  is <- i + (temp_moves + 1):cycle_length
+  x[is, ] <- prueba_skew_hat$x[is, which(prueba_skew_hat$k_indexes[c, temp_moves+1, ] == 1), ]
+}
+
+prueba_skew_hat_x <- data.frame(x) |> tibble() |> 
+  mutate(s = row_number()) |> 
+  filter(s >= 1000) |> 
+  mutate(s = row_number(), 
+         M1 = -30 <= X1 & X1 <= 0,
+         weight = dplyr::cummean(M1)) 
+
+skew_hat_barcode <- prueba_skew_hat_x |> 
+  ggplot(aes(x=s,y=X1)) + 
+  geom_path(color = azul) + 
+  labs(title = "Barcode", y = "HAT \n X1")
+
+skew_hat_ergo <- prueba_skew_hat_x |>
+  ggplot(aes(x=s,y=weight)) + 
+  geom_hline(yintercept = 0.25, color = naranja) + 
+  geom_path(color = azul) + 
+  labs(title = "Est. weight of second mode") 
+
+(skew_pt_barcode + skew_pt_weights) / 
+  (skew_hat_barcode + skew_hat_ergo) 
+
+```

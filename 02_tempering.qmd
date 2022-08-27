@@ -35,25 +35,19 @@ colores_ord <- c(gris, aqua, azul, morado, rosa, naranja, cafe)
 
 ## Tempered Densities
 
-In physics an important probability density is the so-called canonical, Boltzman or Gibbs distribution of a system. It has the following form: 
-$$\pi_G(x) = \dfrac{\exp \big\{ -H(x)\,/\,(T\,k_B) \big\}}{\mathcal{Z}},$$
-where $H(x)$ is the energy of the state $x\,\in\,\mathcal{X}$, $T > 0$ is the temperature of the system, $k_B$ is the Boltzman constant and $\mathcal{Z}$ is the partition function acting as a normalizing constant [@Neal93; @Liu04]. In fact, any density $\pi_X(x) > 0$ for all $x\,\in\,\mathcal{X}$ can be expressed in this form by taking $H(x) = -\log\big(\pi_X(x)\big)$ [@Neal93]. Indeed,
-$$\pi_G(x) = \dfrac{\exp \big\{ -H(x)/(T\,k_B) \big\}}{\mathcal{Z}} = \dfrac{\pi_X(x)\exp\{-T\,k_B\}}{\mathcal{Z}}$$
-but then
-$$\mathcal{Z} = \int\limits_{\mathcal{X}}\exp \big\{ -H(x)/(T\,k_B) \big\} \mathrm{d}x = \exp\{-T\,k_B\}\int\limits_{\mathcal{X}} \pi_X(x) \mathrm{d}x = \exp\{-T\,k_B\}$$
-implies
-$$\pi_G(x)=\pi_X(x).$$
+In physics an important probability density is the so-called canonical, Boltzman or Gibbs distribution of a system. It has the following form: $$\pi_G(x) = \dfrac{\exp \big\{ -H(x)\,/\,(T\,k_B) \big\}}{\mathcal{Z}},$$ where $H(x)$ is the energy of the state $x\,\in\,\mathcal{X}$, $T > 0$ is the temperature of the system, $k_B$ is the Boltzman constant and $\mathcal{Z}$ is the partition function acting as a normalizing constant [@Neal93; @Liu04]. In fact, any density $\pi_X(x) > 0$ for all $x\,\in\,\mathcal{X}$ can be expressed in this form by taking $H(x) = -\log\big(\pi_X(x)\big)$ [@Neal93]. Indeed, $$\pi_G(x) = \dfrac{\exp \big\{ -H(x)/(T\,k_B) \big\}}{\mathcal{Z}} = \dfrac{\pi_X(x)\exp\{-T\,k_B\}}{\mathcal{Z}}$$ but then
+$$\mathcal{Z} = \int\limits_{\mathcal{X}}\exp \big\{ -H(x)/(T\,k_B) \big\} \mathrm{d}x = \exp\{-T\,k_B\}\int\limits_{\mathcal{X}} \pi_X(x) \mathrm{d}x = \exp\{-T\,k_B\}$$ and $\pi_G(x)=\pi_X(x)$.
 
-We can reparametrize with an *inverse temperature* $\beta=1\,/\,(T\,k_B)$ and express it as a conditional density
-$$\pi(x|\beta) = \dfrac{\exp\{ \beta\log\big(\pi_X(x)\big)\}}{Z(\beta)} = \dfrac{\big[\pi_X(x)\big]^\beta}{Z(\beta)},$${#eq-tempered-dens}
-where the notation $Z(\beta)$ makes explicit the dependance of the partition function on the parametrization defined by $\beta$. This deserves at least three comments. 
+We can reparametrize with an *inverse temperature* $\beta=1\,/\,(T\,k_B)$ and express it as a conditional density $$\pi(x|\beta) = \dfrac{\exp\{ \beta\log\big(\pi_X(x)\big)\}}{Z(\beta)} = \dfrac{\big[\pi_X(x)\big]^\beta}{Z(\beta)},$${#eq-tempered-dens} where the notation $Z(\beta)$ makes explicit the dependance of the partition function on the parametrization defined by $\beta$. This deserves at least three comments. 
 
-First,  @eq-tempered-dens defines a family of conditional densities called **tempered densities** since they are a temperature modified version of the density $\pi_X$. Indeed, note that whenever the (inverse) temperature $\beta=1$, we recover the density $\pi_X$. That is $\pi(x|\beta=1) = \pi_X(x)$. Next, for each temperature, the normalizing constant/partition function is $Z(\beta)=\int_{\mathcal{X}}\big[\pi_X(x)\big]^\beta\,\mathrm{d}x$. Third and of utmost importance, this exponentiation of a density has the consequence that, whenever we raise the temperature--- hence decreasing $\beta$ towards $0$--- the resulting *hot* density is flatter. Viceversa, if we lower the temperature and consider a *colder* density with a higher $\beta$ value, it becomes sharper or more peaked. This phenomenom is illustrated in @fig-tempered-dens. 
+First, @eq-tempered-dens defines a family of conditional densities called **tempered densities** since they are a temperature modified version of the density $\pi_X$. Indeed, note that whenever the (inverse) temperature $\beta=1$, we recover the density $\pi_X$. That is $\pi(x|\beta=1) = \pi_X(x)$. Next, for each temperature, the normalizing constant/partition function is $Z(\beta)=\int_{\mathcal{X}}\big[\pi_X(x)\big]^\beta\,\mathrm{d}x$. Third and of utmost importance, this exponentiation of a density has the consequence that, whenever we raise the temperature--- hence decreasing $\beta$ towards $0$--- the resulting *hot* density is flatter. Viceversa, if we lower the temperature and consider a *colder* density with a higher $\beta$ value, it becomes sharper or more peaked. This phenomenom is illustrated in @fig-tempered-dens. 
 
 ```{r tempered_dens}
 #| cache: false
 #| label: fig-tempered-dens
 #| fig-cap: Tempered densities of a mixture of normals.
+#| fig-width: 4.75
+#| fig-height: 2.25
 
 z_b <- tibble(
   beta = 0.25^(0:5),
@@ -76,7 +70,7 @@ tibble(x = rep(seq(-50,50,length.out = 1001),6),
   facet_wrap(~beta) +
   geom_path() + 
   scale_color_manual(values = colores_ord) + 
-  theme(legend.position = "bottom") + 
+  theme(legend.position = "right") + 
   labs(title = "Tempered densities", 
        subtitle = "become flatter the hotter they are.")
 ```
@@ -85,26 +79,15 @@ tibble(x = rep(seq(-50,50,length.out = 1001),6),
 
 @Marinari.Parisi92 proposed to leverage this behavior to allow MCMC chains to escape local mode traps. Conceptually, the core idea is very simple: start at some state at the *cold* original target level $\beta=1$, then *heat* the density up to a point where the chain is able to fully explore the space and approach the other mode(s); afterwards, *cool* down the density so that the chain explores this other region(s) again at $\beta=1$. The challenge is in implementing an algorithm based on it that mantains the validity of the Ergodic Theorem at $\beta=1$. Their proposal is a *space augmentation* Metropolis within Gibbs algorithm called **Simulated Tempering** (ST). 
 
-It starts by considering a joint density between the state $x\in\mathcal{X}$ and some temperature index $k\in\mathcal{K} = \{1,2,\dots,K\}$, such that for each $k$ there is a corresponding $\beta_k\in \Delta$ where, slightly abusing notation, $\Delta = \lbrace \beta_k \in (0, 1]: \beta_1 = 1 > \beta_2 > \dots > \beta_K > 0\rbrace$. That is, we augment the space with an inverese temperature parameter that can take $K$ non-negative decreasing values starting from $\beta_1=1$. The new joint target density in the space $\mathcal{X}\times\mathcal{K}$ takes the form:
-$$\pi(x,k) = \dfrac{\exp\{g_k - \beta_k H(x) \}}{\mathcal{Z}},$$
-where $g_k$ are a set of tuning parameters that correspond to one constant per temperature level. In terms of our $\pi_X$ density, this is equivalent to 
-$$\pi(x, k) = \dfrac{\exp\{g_k\}\big[\pi_X(x)\big]^\beta}{\mathcal{Z}}$${#eq-st-target}
-This new target decomposes into the product of the (conditional) tempered densities and a marginal temperature probability mass function: 
-$$\pi(x, k)=\pi(x|\beta_k)p(k),$$
-where
-$$p(k) = \int\limits_{\mathcal{X}} \pi(x,k) \mathrm{d}x = \dfrac{\exp\lbrace g_k\rbrace}{\mathcal{Z}}\int\limits_{\mathcal{X}} \big[\pi_X(x)\big]^{\beta_k} \mathrm{d}x = \dfrac{\exp\lbrace g_k\rbrace Z(\beta_k)}{\mathcal{Z}}.$${#eq-st-marginal-temp}
+It starts by considering a joint density between the state $x\in\mathcal{X}$ and some temperature index $k\in\mathcal{K} = \{1,2,\dots,K\}$, such that for each $k$ there is a corresponding $\beta_k\in \Delta$ where, slightly abusing notation, $\Delta = \lbrace \beta_k \in (0, 1]: \beta_1 = 1 > \beta_2 > \dots > \beta_K > 0\rbrace$. That is, we augment the space with an inverese temperature parameter that can take $K$ non-negative decreasing values starting from $\beta_1=1$. The new joint target density in the space $\mathcal{X}\times\mathcal{K}$ takes the form: $$\pi(x,k) = \dfrac{\exp\{g_k - \beta_k H(x) \}}{\mathcal{Z}},$$ where $g_k$ are a set of tuning parameters that correspond to one constant per temperature level. In terms of our $\pi_X$ density, this is equivalent to $$\pi(x, k) = \dfrac{\exp\{g_k\}\big[\pi_X(x)\big]^\beta}{\mathcal{Z}}$${#eq-st-target} This new target decomposes into the product of the (conditional) tempered densities and a marginal temperature probability mass function: $$\pi(x, k)=\pi(x|\beta_k)p(k),$$ where $$p(k) = \int\limits_{\mathcal{X}} \pi(x,k) \mathrm{d}x = \dfrac{\exp\lbrace g_k\rbrace}{\mathcal{Z}}\int\limits_{\mathcal{X}} \big[\pi_X(x)\big]^{\beta_k} \mathrm{d}x = \dfrac{\exp\lbrace g_k\rbrace Z(\beta_k)}{\mathcal{Z}}.$${#eq-st-marginal-temp}
 
 We then have the following algorithm, starting from $(x_0,k_0)$ and iterating for $s=0,\dots,S-1$:
 
-1. **Temperature move**: propose a change of temperature $k^\star_{s+1}$ and accept to move with probability
-$$\min\left\lbrace1,\dfrac{p(k^\star_{s+1}|x_s)q(k^\star_{s+1},k_s)}{p(k_s|x_s) q(k_s,k^\star_{s+1})}\right\rbrace,$$
-where $p(k|x) \propto \exp\{g_k\}\big[\pi_X(x)\big]^{\beta_k}$ is the temperature pmf conditional on $X=x$. This is Metropolis-Hastings so, if the move is accepted we set $k_{s+1}=k^\star_{s+1}$ and if rejected we stay at the same temperature level and set $k_{s+1}=k_s$.
+1. **Temperature move**: propose a change of temperature $k^\star_{s+1}$ and accept to move with probability $$\min\left\lbrace1,\dfrac{p(k^\star_{s+1}|x_s)q(k^\star_{s+1},k_s)}{p(k_s|x_s) q(k_s,k^\star_{s+1})}\right\rbrace,$$ where $p(k|x) \propto \exp\{g_k\}\big[\pi_X(x)\big]^{\beta_k}$ is the temperature pmf conditional on $X=x$. This is Metropolis-Hastings so, if the move is accepted we set $k_{s+1}=k^\star_{s+1}$ and if rejected we stay at the same temperature level and set $k_{s+1}=k_s$.
 
 2. **Within-temperature exploration**: evolve the state $x_s$ to $x_{s+1}$ via a valid MCMC method targeting $\pi(x|\beta_{k_{s+1}})$.
 
-A common algorithm for the temperature move is to propose each of its neighbours with probability $0.5$.^[If on the extremes of the schedule, propose the only neighbour with probability $0.5$, otherwise stay at the same temperature.] Hence, as a symmetrical proposal, this simplifies the Hastings ratio to a Metropolis one with the following form on the log-scale
-$$\delta_g(k^\star_{s+1},k_s) + \delta_\beta(k^\star_{s+1},k_s)\log\big[\pi_X(x)\big]$${#eq-st-logratio}
-where $\delta_g(k',k) = g_{k'} - g_k$ and $\delta_\beta(k',k) = \beta_{k'} - \beta_k$. 
+A common algorithm for the temperature move is to propose each of its neighbours with probability $0.5$.^[If on the extremes of the schedule, propose the only neighbour with probability $0.5$, otherwise stay at the same temperature.] Hence, as a symmetrical proposal, this simplifies the Hastings ratio to a Metropolis one with the following form on the log-scale $$\delta_g(k^\star_{s+1},k_s) + \delta_\beta(k^\star_{s+1},k_s)\log\big[\pi_X(x)\big]$${#eq-st-logratio} where $\delta_g(k',k) = g_{k'} - g_k$ and $\delta_\beta(k',k) = \beta_{k'} - \beta_k$. 
 
 Furthermore, the MCMC within-temperature exploration can be a Random Walk Metropolis of, say, $w$ intermediate steps. In this case, in each of the cycles we have a sequence $(x_{s,1},\,\dots,\, x_{s,w-1},\,x_{s,w})$ of sampled states that may be kept for estimating expectations [@Hastings70]. We start the next cycle attempting the temperature move at $x_{s,w}$.
 
@@ -134,6 +117,7 @@ An implementation of ST is shown on @fig-st-cheat. Five temperature levels were 
 ```{r st-cheat-figs}
 #| label: fig-st-cheat
 #| fig-cap: Simulated Tempering targetting a mixture target density with well separated modes using 5 temperature levels and 5 within-temperature RWM exploration moves per cycle, carefully tuning the constants $g_k$. On the traceplot (left column panels) line segments on each panel represent a sequence of states that remain at the same temperature level; when the temperature changes, a new line segment is started at the corresponding panel. On the right column panels we see the histogram approximation (top-right) and ergodic average estimation (bottom-right) considering only the samples at the first level, which is the original target. 
+#| fig-pos: h
 
 sim_temper_data <- tibble(x = as.vector(st_mixnorm$x), k = rep(st_mixnorm$k,each=5+1)) %>% 
   mutate(Temp_Change = k != lag(k,default = st_mixnorm$k[1])) %>% 
@@ -150,7 +134,8 @@ st_mixnorm_trace <- sim_temper_data %>%
   scale_color_manual(values = colores_ord[-1]) + 
   labs(title = "Traceplot", subtitle = "(full chain)") +
   theme(legend.position = "none", 
-        strip.background = element_rect(fill = "transparent"))
+        strip.background = element_rect(fill = "transparent"),
+        axis.text.y = element_text(size = rel(0.5))) 
 
 st_mixnorm_hist <- sim_temper_data |> 
   filter(k == 1) |> 
@@ -178,11 +163,7 @@ st_mixnorm_ergo <- st_mixnorm_ergo_data |>
 st_mixnorm_trace + (st_mixnorm_hist / st_mixnorm_ergo)
 ```
 
-This looks satisfactory, yet we must come clean and admit this is a misleading performance! Indeed, in this simulation the tuning parameters $g_k$ were conveniently set to the values
-$$g_k \approx -\log\big[Z(\beta_k)\big],$$
-which implies, substituting at @eq-st-marginal-temp, that for each level $k$
-$$p(k) = \dfrac{\exp\lbrace g_k\rbrace Z(\beta_k)}{\mathcal{Z}} \approx \dfrac{1}{\mathcal{Z}}.$$
-yielding a uniform marginal temperature distribution. In other words, we expect the chain to spend the same amount of time at each level and indeed we observed the following frequencies: `r st_mixnorm$k |> table() |> (\(x) round(100*x/sum(x),2) |> paste0("%"))()`. However, setting these specific tuning constants was only possible because the target is one-dimensional and we obtained each $Z(\beta_k)=\int_{\mathcal{X}}\big[\pi_X(x)\big]^{\beta_k}\mathrm{d}x$ by numerical integration. This will not be possible in any practical scenario, as we mentioned in the previous chapter. 
+This looks satisfactory, yet we must come clean and admit this is a misleading performance! Indeed, in this simulation the tuning parameters $g_k$ were conveniently set to the values $$g_k \approx -\log\big[Z(\beta_k)\big],$$ which implies, substituting at @eq-st-marginal-temp, that for each level $k$ $$p(k) = \dfrac{\exp\lbrace g_k\rbrace Z(\beta_k)}{\mathcal{Z}} \approx \dfrac{1}{\mathcal{Z}},$$ yielding a uniform marginal temperature distribution. In other words, we expect the chain to spend the same amount of time at each level and indeed we observed the following frequencies: `r st_mixnorm$k |> table() |> (\(x) round(100*x/sum(x),2) |> paste0("%"))()`. However, setting these specific tuning constants was only possible because the target is one-dimensional and we obtained each $Z(\beta_k)=\int_{\mathcal{X}}\big[\pi_X(x)\big]^{\beta_k}\mathrm{d}x$ by numerical integration. This will not be possible in any practical scenario, as we mentioned in the previous chapter. 
 
 ```{r st-chain}
 
@@ -195,11 +176,8 @@ st_mixnorm_r <- tempeRing:::ST_rwm_chain(
 
 ```
 
-What to actually expect, then? Well, a naive alternative is to disregard the constants all together and set them all to $g_k=0$, as we do in @fig-st. This unfortunately has the consequence of losing the uniform temperature marginal and instead yields
-$$p(k) = \dfrac{Z(\beta_k)}{\mathcal{Z}},$$
-which means that we will spend most of the time at the hottest level and only a small proportion of time at the targeted cold level, since
-$$Z(\beta_1 = 1)=\int\limits_{\mathcal{X}}\pi_X(x)\mathrm{d}x << \int\limits_{\mathcal{X}}\big[\pi_X(x)\big]^{\beta_K}\mathrm{d}x = Z(\beta_K).$$
-For the run of @fig-st, this translated into observed frequencies of `r st_mixnorm_r$k |> table() |> (\(x) round(100*x/sum(x),2) |> paste0("%"))()`. This is apparent when one observes the scarcity of the top panel of the traceplot or the difference between the $t$ and $s$ horizontal axes. For the `r length(st_mixnorm_r$k)` full cycles sampled, only `r sum(st_mixnorm_r$k == 1)` were at the $\beta = 1$ level. 
+What to actually expect, then? Well, a naive alternative is to disregard the constants all together and set them all to $g_k=0$, as we do in @fig-st. This unfortunately has the consequence of losing the uniform temperature marginal and instead yields $$p(k) = \dfrac{Z(\beta_k)}{\mathcal{Z}},$$
+which means that we will spend most of the time at the hottest level and only a small proportion of time at the targeted cold level, since $$Z(\beta_1 = 1)=\int\limits_{\mathcal{X}}\pi_X(x)\mathrm{d}x << \int\limits_{\mathcal{X}}\big[\pi_X(x)\big]^{\beta_K}\mathrm{d}x = Z(\beta_K).$$ For the run of @fig-st, this translated into observed frequencies of `r st_mixnorm_r$k |> table() |> (\(x) round(100*x/sum(x),2) |> paste0("%"))()`. This is apparent when one observes the scarcity of the top panel of the traceplot or the difference between the $t$ and $s$ horizontal axes. For the `r length(st_mixnorm_r$k)` full cycles sampled, only `r sum(st_mixnorm_r$k == 1)` were at the $\beta = 1$ level. 
 
 ```{r st-figs}
 #| label: fig-st
@@ -222,7 +200,8 @@ st_mixnorm_trace_r <- sim_temper_data_r %>%
   scale_size_manual(values = rel(seq(0.25,0.1,length.out=5))) + 
   labs(title = "Traceplot", subtitle = "(full chain)") + 
   theme(legend.position = "none", 
-        strip.background = element_rect(fill = "transparent"))
+        strip.background = element_rect(fill = "transparent"),
+        axis.text.y = element_text(size = rel(0.5)))
 
 st_mixnorm_hist_r <- sim_temper_data_r |> 
   filter(k == 1) |> 
@@ -245,11 +224,11 @@ st_mixnorm_ergo_r <- st_mixnorm_ergo_data_r |>
   geom_hline(yintercept = 0, color = cafe) + 
   geom_path(color = aqua) + 
   labs(title = "Ergodic Averages", subtitle = "(target level only)") + 
-  ylim(-st_mixnorm_lims_r,st_mixnorm_lims_r)
+  ylim(-st_mixnorm_lims_r,st_mixnorm_lims_r) + 
+  theme(axis.text.y = element_text(size = rel(0.9)))
 
 st_mixnorm_trace_r + (st_mixnorm_hist_r / st_mixnorm_ergo_r)
 ```
-
 
 ```{r st-reps}
 replicate_st_erg <- function(r){
@@ -279,6 +258,8 @@ For this particular simulation, the estimation seems close to the true value of 
 ```{r st-reps-fig}
 #| label: fig-st-reps
 #| fig-cap: Ergodic Averages for 300 replications of Simulated Tempering targetting a mixture target density with well separated modes using 5 temperature levels and 5 within-temperature RWM exploration moves per cycle, fixing all the tuning constants $g_k=0$. The gray lines represent the evolution of the averages; the blue diamonds the final cummulative mean; the orange horizontal line is the reference of the true value of the mean. 
+#| fig-width: 5.5
+#| fig-height: 2.5
 
 st_erg_reps_plot <- st_erg_reps |> 
   ggplot(aes(x=s,y=mean,group=r)) + 
@@ -295,7 +276,10 @@ Before moving into a separate proposal to overcome this difficulty, we briefly m
 
 ```{r vg-figs}
 #| label: fig-vg-figs
-#| fig-cap:  Viewing two joint ST densities $\pi(x,k)$ for the normal mixture with extended number of levels. When naively setting all tuning constants $g_k=0$ (Left) virtually all the mass is on the hotter levels and the chain tends towards them. The role of properly tuning $g_k\approx -\log\big[Z(\beta_k)\big]$ (Right) is to balance mass across levels and make the modal regions at the target level the peaks at the end of an extended hillside.  
+#| fig-cap:  Viewing two joint ST densities $\pi(x,k)$ for the normal mixture with extended number of levels. When naively setting all tuning constants $g_k=0$ (Left) virtually all the mass is on the hotter levels and the chain tends towards them. The role of properly tuning $g_k\approx -\log\big[Z(\beta_k)\big]$ (Right) is to balance mass across levels and make the modal regions at the target level the peaks at the end of an extended hillside. 
+#| fig-width: 5
+#| fig-height: 2.5
+#| fig-pos: h 
 
 vg_b_schedule <- c(1,0.8,0.6^(1:10))
 z_b_extended <- tibble(
@@ -339,25 +323,19 @@ naive_g + cheat_g
 
 ```
 
-This also highlights the reason we usually only attempt to move between neighboring temperature levels. If we try to jump from a very hot one to the coldest one, we are most likely attempting to jump into the canyon! If we look again at @eq-st-logratio, 
-$$\delta_g(k^\star_{s+1},k_s) + \delta_\beta(k^\star_{s+1},k_s)\log\big[\pi_X(x)\big],$$
-any temperature move depends on $\pi_X(x)$, the density value at the target level, which will most likely be small as the modal regions occupy only a very small portion of the space. It is then the change $\delta_g(k^\star_{s+1},k_s)$ factor that makes temperature moves towards a colder level more feasable. Hence, any tempering implementation entails a proper balancing act between using sufficiently similar levels and as small a number thereof as possible.
+This also highlights the reason we usually only attempt to move between neighboring temperature levels. If we try to jump from a very hot one to the coldest one, we are most likely attempting to jump into the canyon! If we look again at @eq-st-logratio, $$\delta_g(k^\star_{s+1},k_s) + \delta_\beta(k^\star_{s+1},k_s)\log\big[\pi_X(x)\big],$$ any temperature move depends on $\pi_X(x)$, the density value at the target level, which will most likely be small as the modal regions occupy only a very small portion of the space. It is then the change $\delta_g(k^\star_{s+1},k_s)$ factor that makes temperature moves towards a colder level more feasable. Hence, any tempering implementation entails a proper balancing act between using sufficiently similar levels and as small a number thereof as possible.
 
 ## Parallel Tempering
 
 An alternative proposal by @Geyer91 actually had appeared a year before @Marinari.Parisi92. Originally named *Metropolis-coupled Markov Chain Monte Carlo* or MC^3, it is now known as **Parallel Tempering** (PT) in the statistics literature and Replica Exchange in the chemical and physical sciences, due to its independent later introduction by @Hukushima.Nemoto96. One could say that it is a forceful approach to ensuring we have a uniform temperature marginal distribution. How? By *replicating* the system and running a chain at each level in parallel and whenever it is time to change temperature we attempt a *state exchange* of two neighbouring systems. 
 
-In MCMC terms, Parallel Tempering is a further *space augmentation* from $X \in \mathcal{X}$ to $\mathbf{X}\in\mathcal{X}^K$ with an expanded new product target of tempered densities like @eq-tempered-dens at each of $K$ levels: 
-$$\pi\big(x_1,x_2,\dots, x_K\big) = \prod\limits_{k=1}^K\pi(x_k|\beta_k) = \prod\limits_{k=1}^K\dfrac{\big[\pi_X(x_k)\big]^{\beta_k}}{Z(\beta_k)}.$$
-Since the joint target is a product of independent components, each of them can be evolved in parallel for the *within-temperature* exploration moves, yielding $k$ separate chains. The temperature move from ST now becomes a *temperature swap* between two randomly chosen pair of levels. That is, at the $s$-th cycle, we propose a swap between the $k$-th and $(k+1)$-th components of the $\mathbf{X}^{(s)}$ state via the Metropolis ratio, which has a very simple expression thanks to the joint product form:
-$$\dfrac{\pi\big(x_1^{(s)}, \dots, x_{k+1}^{(s)} , x_{k}^{(s)}, \dots,x_K^{(s)}\big)}{\pi\big(x_1^{(s)},\dots, x_{k}^{(s)}, x_{k+1}^{(s)},\dots,x_K^{(s)}\big)} =  \left[\dfrac{\pi_X(x_{k+1}^{(s)})}{\pi_X(x_{k}^{(s)})}\right]^{\beta_k}\left[\dfrac{\pi_X(x_k^{(s)})}{\pi_X(x_{k+1}^{(s)})}\right]^{\beta_{k+1}},$$
-or, in the log-scale,
-$$(\beta_{k+1} - \beta_k)\left(\log\big[\pi_X(x_k^{(s)})\big] - \log\big[\pi_X(x_{k+1}^{(s)})\big]\right).$${#eq-pt-logratio}
-Notice that we no longer need any $g_k$ tuning parameters, only the temperature schedule, albeit at the extra computational cost of replicating the system. But modern parallel computing architectures, be they a single computer with multi-core capabilities or bigger cluster/distributed systems, may allow us such an extension.^[Depending on the architecture and nature of the problem actually swapping $\beta$ values among chains/machines instead of exchanging the full state may prove advantageous to reduce overhead.] 
+In MCMC terms, Parallel Tempering is a further *space augmentation* from $X \in \mathcal{X}$ to $\mathbf{X}\in\mathcal{X}^K$ with an expanded new product target of tempered densities like @eq-tempered-dens at each of $K$ levels: $$\pi\big(x_1,x_2,\dots, x_K\big) = \prod\limits_{k=1}^K\pi(x_k|\beta_k) = \prod\limits_{k=1}^K\dfrac{\big[\pi_X(x_k)\big]^{\beta_k}}{Z(\beta_k)}.$$ Since the joint target is a product of independent components, each of them can be evolved in parallel for the *within-temperature* exploration moves, yielding $k$ separate chains. The temperature move from ST now becomes a *temperature swap* between two randomly chosen pair of levels. That is, at the $s$-th cycle, we propose a swap between the $k$-th and $(k+1)$-th components of the $\mathbf{X}^{(s)}$ state via the Metropolis ratio, which has a very simple expression thanks to the joint product form: $$\dfrac{\pi\big(x_1^{(s)}, \dots, x_{k+1}^{(s)} , x_{k}^{(s)}, \dots,x_K^{(s)}\big)}{\pi\big(x_1^{(s)},\dots, x_{k}^{(s)}, x_{k+1}^{(s)},\dots,x_K^{(s)}\big)} =  \left[\dfrac{\pi_X(x_{k+1}^{(s)})}{\pi_X(x_{k}^{(s)})}\right]^{\beta_k}\left[\dfrac{\pi_X(x_k^{(s)})}{\pi_X(x_{k+1}^{(s)})}\right]^{\beta_{k+1}},$$ or, in the log-scale, $$(\beta_k-\beta_{k+1})\left(\log\big[\pi_X(x_{k+1}^{(s)})\big] - \log\big[\pi_X(x_k^{(s)})\big]\right).$${#eq-pt-logratio} Notice that we no longer need any $g_k$ tuning parameters, only the temperature schedule, albeit at the extra computational cost of replicating the system. But modern parallel computing architectures, be they a single computer with multi-core capabilities or bigger cluster/distributed systems, may allow us such an extension.^[Depending on the architecture and nature of the problem actually swapping $\beta$ values among chains/machines instead of exchanging the full state may prove advantageous to reduce overhead.] 
 
-We still require, though, an exchange between succesive and "close enough" levels to ensure that the "loss in energy" in @eq-pt-logratio is not to big when attempting a swap between a more likely state at a hotter level and a less likely one at a colder level.^[A big "loss in energy" means a very negative value of the term $\left(\log\big[\pi_X(x_k^{(s)})\big] - \log\big[\pi_X(x_{k+1}^{(s)})\big]\right)$, which upon exponentiation would yield a very low Metropolis acceptance probability.] This type of swaps are needed to effectively allow *communication* between the target level and the hottest one, were we are able to escape local modes. Hence, a key objective of Parallel Tempering methodology is to ensure high *round trip rates* [@Syed.etal22], in which a state starting at one of the extremes of the temperature schedule is able to reach the other extreme and back. 
+We still require, though, an exchange between succesive and "close enough" levels. To see why, let us pause to observe @eq-pt-logratio. Since $\beta_k > \beta_{k+1}$, we always accept a swap whenever $x_{k+1}^{(s)}$ is more likely under the original target density than $\pi_X(x_k^{(s)})$: @eq-pt-logratio is positive, the ratio on the acceptance probability scale is bigger than one, we happily swap. However, when in the opposite case, we would be trying to exchange a more likely state at a colder level with a less so at the hotter one. This entails a "loss in energy", $\delta(H) := \left(\log\big[\pi_X(x_{k+1}^{(s)})\big] - \log\big[\pi_X(x_k^{(s)})\big]\right) < 0$, which only gets magnified the bigger the difference between temperatures is. And yet, these are precisely the types of swaps we want to make to escape local modes and allow *communication* between the target level and the hottest one! 
 
-We will later return to this point, but first we implement PT on the same normal mixture example of the preceding section. @fig-pt-mixnorm shows, as before, the traceplots for all the chains at each level as well as the histogram approximation and ergodic average estimations at the original target level $\beta_1=1$. 
+We are again left with a trade-off conundrum. If we have too few and different temperatures, the energy losses are too high to overcome and no swaps are made. If we have too many and very similar ones, we have a longer ladder to climb until we reach the last level. Hence, a key objective of tempering methodology is to design algorithms with high *round trip rates* [@Syed.etal22], by which a state starting at one of the extremes of the temperature schedule is able to reach the other end and come back often enough. 
+
+We will return to this very important point, but first we implement PT on the same normal mixture example of the preceding section. @fig-pt-mixnorm shows, as before, the trace plots for all the chains at each level, which we can jokingly call barcode plots as we see an alternating pattern of mode-exploration and swapping behaviour emerge. A histogram approximation and ergodic average estimations at the original target level $\beta_1=1$ are again shown on the right hand side. 
 
 ```{r pt-chain}
 #| results: false
@@ -411,7 +389,7 @@ pt_mixnorm_trace <- pt_mixnorm_x |>
   geom_path(show.legend = FALSE, size = rel(0.05)) + 
   scale_y_continuous(breaks = c(-20,0,20)) + 
   scale_color_manual(values = colores_ord[-1]) + 
-  labs(title = "Traceplot", subtitle = "(all chains)") + 
+  labs(title = "Barcode plot", subtitle = "(all chains)") + 
   theme(legend.position = "none", 
         strip.background = element_rect(fill = "transparent"))
 
@@ -485,9 +463,9 @@ pt_erg_reps_final <- slice_max(group_by(pt_erg_reps,r),s)
 plan(sequential)
 ```
 
-Now, since we are now running 5 chains who exchange information one may wonder if this is actually better than running 5 parallel *simulated tempering* chains and agregating the results at the end. Indeed, this extra computing effort required was "one of the reasons for the slow adoption of this method" [@Earl.Deem05 p.3910]. We can compare both methods. 
+Now, with PT we are running 5 chains who exchange information. One may wonder if this is actually better than running 5 parallel *simulated tempering* chains and agregating their results at the end. Indeed, this extra computing effort required was "one of the reasons for the slow adoption of this method" [@Earl.Deem05 p.3910]. We can compare both. 
 
-In the preceeding section we ran 300 ST chains for $5,000$ cycles. We can split them in 60 blocks of 5 parallel chains each and obtain their weighted empirical average^[As each chain contains a different number of final samples at the coldest level.]. On the other hand, we can run PT 60 times with $5,000$ cycles and see the performance. The top panel of @fig-pt-reps shows the ergodic averages of those 60 PT runs. In the bottom panel we have their absolut error comparison against the 60 ST blocks: the points represent each run's observed error, boxplots for the absolute errors per algorithm are shown as well as the Root Mean Square Error. We see that PT had a lower RMSE than ST. 
+We ran before 300 ST chains for $5,000$ cycles. Let's split them in 60 blocks of 5 parallel chains each and obtain their (weighted) empirical average^[As each chain contains a different number of final samples at the coldest level.]. Similarly, we can run PT 60 times, again for $5,000$ cycles. The top panel of @fig-pt-reps shows the ergodic averages of those 60 PT runs. In the bottom panel we have their absolut error comparison versus the 60 ST blocks. Points represent each run's observed error, boxplots for the absolute errors per algorithm are shown, as well as the Root Mean Squared Error. We see that PT outperforms its ST equivalent. 
 
 ```{r pt-reps-fig}
 #| label: fig-pt-reps
@@ -528,11 +506,13 @@ pt_st_compara <- pt_st_compara_data  |>
 
 ```
 
-This difference in performance would only be increased if we are interested in more challenging estimations. For example, if we consider $\mathbb{P}(X > 25)$, we estimate it as the proportion of samples in our chains that exceeded 25, given that ST ends up with substantially less samples than PT the variance of its estimations is much higher than those of the PT runs. Indeed on @fig-p25-compara we can see the estimations and RMSE of said probability alongside the true value obtained by numerical integration (orange horizontal line). The RMSE for ST is more than double that of PT. 
+This difference in performance is not limited to the particular case of the mixture global mean. For example, if we consider $\mathbb{P}(X > 25)$, we estimate it as the proportion of samples in our chains that exceeded 25. Given that ST ends up with substantially less samples than PT, the variance of its estimations is much higher than those of the PT runs (see @fig-p25-compara). The RMSE for ST more than doubles that of PT. This result paints an image of @Earl.Deem05's words: "it became clear that a parallel tempering simulation is more than [1/K] times more efficient than a standard, single-temperature Monte Carlo simulation." So, we focus our attention on Parallel Tempering and its own challenges.
 
 ```{r p25-compara}
 #| label: fig-p25-compara
 #| fig-cap: Comparison of estimates by ST and PT of $\mathbb{P}(X > 25)$ for the normal mixture across the 60 replications. 
+#| fig-width: 5.5
+#| fig-height: 2.25
 
 P25_num <- integrate(tempeRing:::dmix_norm,lower = 25, upper = Inf, w = c(0.5,0.5), mean = c(-20,20), sd = c(3,3),abs.tol = 1e-10)$value
 
@@ -553,12 +533,12 @@ compara_pt_st_p25_data <- st_p25_data |>
 compara_pt_st_p25_data |> 
   ggplot(aes(x=algorithm,y=P25, color = algorithm)) + 
   geom_hline(yintercept = P25_num, color = naranja) + 
-  geom_jitter(width = 0.25, height = 0) + 
+  geom_jitter(width = 0.25, height = 0, alpha = 0.8) + 
   geom_text(data = distinct(compara_pt_st_p25_data, algorithm, RMSE), 
             aes(y = max(compara_pt_st_p25_data$P25) + 0.01, label = round(RMSE,3)),
-            show.legend = FALSE, size = rel(7)) + 
+            show.legend = FALSE, size = rel(4)) + 
   annotate("text", color = gris, x = 1.5, 
-           y = max(compara_pt_st_p25_data$P25) + 0.01, label = "RMSE", size = rel(7)) + 
+           y = max(compara_pt_st_p25_data$P25) + 0.01, label = "RMSE", size = rel(4)) + 
   scale_color_manual(values = c(azul,aqua)) + 
   labs(title = "Estimated Probabilities across 60 replications", 
        subtitle = "(target level only)", 
@@ -566,6 +546,4 @@ compara_pt_st_p25_data |>
   theme(legend.position = "none")
 
 ```
-
-Hence, like @Earl.Deem05 [p. 3910] put it: "it became clear that a parallel tempering simulation is more than [1/K] times more efficient than a standard, single-temperature Monte Carlo simulation." So, we focus our attention to Parallel Tempering and its own challenges.
 
